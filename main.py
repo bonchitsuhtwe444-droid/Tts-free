@@ -107,6 +107,11 @@ def main(page: ft.Page):
             ),
         )
 
+    # Flet အသစ်အတွက် Dialog ဖွင့်/ပိတ် စနစ်
+    def close_dlg(dlg):
+        dlg.open = False
+        page.update()
+
     def show_qr(e):
         dlg = ft.AlertDialog(
             title=ft.Text("မုန့်ဖိုးပေးရန်", color=COLOR_GOLD, text_align=ft.TextAlign.CENTER),
@@ -119,14 +124,16 @@ def main(page: ft.Page):
                 ),
                 alignment=ft.Alignment.CENTER,
             ),
-            actions=[ft.TextButton("ပိတ်မည်", on_click=lambda e: page.close(dlg))],
+            actions=[ft.TextButton("ပိတ်မည်", on_click=lambda e: close_dlg(dlg))],
             actions_alignment=ft.MainAxisAlignment.CENTER,
             bgcolor="#2D1B4E", 
             shape=ft.RoundedRectangleBorder(radius=20),
         )
-        page.open(dlg)
+        page.overlay.append(dlg)
+        dlg.open = True
+        page.update()
 
-    # 1. Header (letter_spacing ဖြုတ်ထားပါတယ်)
+    # 1. Header
     header = ft.Row(
         [
             ft.Column(
