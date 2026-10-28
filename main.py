@@ -8,7 +8,7 @@ import json
 from datetime import datetime
 
 # ==========================================
-# PLATINUM VOICE - PRESETS & CUSTOM SETTINGS
+# PLATINUM VOICE - PRESETS & CUSTOM FILENAME
 # ==========================================
 
 GRADIENT_COLORS = ["#1A0B2E", "#2D1B4E", "#0F2027", "#203A43"] 
@@ -73,7 +73,6 @@ def main(page: ft.Page):
     page.title = "Platinum Voice"
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 20
-    # Scrollbar အဖြူတန်းကြီး မပေါ်စေရန် HIDDEN လုပ်ထားပါတယ်
     page.scroll = ft.ScrollMode.HIDDEN 
     
     page.fonts = {
@@ -336,13 +335,16 @@ def main(page: ft.Page):
 
                 ft.Divider(color=GLASS_BORDER),
                 ft.Text("သတ်မှတ်ချက် သိမ်းဆည်းရန်", size=12, color=COLOR_TEXT_MUTED),
-                ft.Row(
+                
+                # ခလုတ်ကို အောက်ကို ရွှေ့ပြီး နေရာချထားပါတယ်
+                ft.Column(
                     [
                         preset_name_input,
-                        save_preset_btn
+                        ft.Row([save_preset_btn], alignment=ft.MainAxisAlignment.END)
                     ],
-                    spacing=10,
+                    spacing=10
                 ),
+                
                 ft.Divider(color=GLASS_BORDER),
                 ft.Text("သိမ်းထားသော သတ်မှတ်ချက်များ", size=12, weight=ft.FontWeight.BOLD, color=COLOR_GOLD),
                 presets_list_container,
@@ -441,6 +443,19 @@ def main(page: ft.Page):
             page.update()
 
     def setup_player_ui(file_path, filename):
+        # ဖိုင်နာမည် ပြင်ဆင်နိုင်တဲ့ အကွက် (အစပိုင်းမှာ timestamp ဖြုတ်ထားပြီး ပြပေးမယ်)
+        default_name = filename.replace(".mp3", "")
+        file_name_input = ft.TextField(
+            value=default_name,
+            hint_text="ဖိုင်နာမည် ရိုက်ထည့်ပါ",
+            bgcolor=GLASS_INPUT_BG,
+            border_color=GLASS_BORDER,
+            color=COLOR_TEXT,
+            text_size=14,
+            content_padding=10,
+            border_radius=10,
+        )
+
         def play_audio(e):
             try:
                 ft.UrlLauncher().launch_url(f"file://{file_path}")
@@ -452,15 +467,26 @@ def main(page: ft.Page):
 
         def save_to_download(e):
             try:
+                # စိတ်ကြိုက်နာမည် ရိုက်ထည့်ထားရင် အဲဒါကို ယူမယ်
+                custom_name = file_name_input.value.strip()
+                
+                # ဖိုင်နာမည်မှာ သုံးလို့မရတဲ့ သင်္ကေတတွေ (\, /, :, *, ?, ", <, >, |) ကို ဖျက်မယ်
+                custom_name = re.sub(r'[\\/*?:"<>|]', "", custom_name)
+                
+                if custom_name:
+                    safe_filename = f"{custom_name}.mp3"
+                else:
+                    safe_filename = filename # နာမည်မပေးရင် မူရင်းအတိုင်း
+
                 download_dir = "/storage/emulated/0/Download"
                 if not os.path.exists(download_dir):
                     download_dir = os.path.expanduser("~/Downloads")
                     if not os.path.exists(download_dir):
                         os.makedirs(download_dir, exist_ok=True)
 
-                dest_path = os.path.join(download_dir, filename)
+                dest_path = os.path.join(download_dir, safe_filename)
                 shutil.copy2(file_path, dest_path)
-                status_text.value = f"သိမ်းဆည်းပြီးပါပြီ: Download/{filename}"
+                status_text.value = f"သိမ်းဆည်းပြီးပါပြီ: Download/{safe_filename}"
                 page.update()
             except Exception as ex:
                 status_text.value = f"သိမ်းဆည်းမှု အမှားအယွင်း: {str(ex)}"
@@ -492,7 +518,11 @@ def main(page: ft.Page):
                 ft.Column(
                     [
                         ft.Text("GENERATED AUDIO", size=12, weight=ft.FontWeight.BOLD, color=COLOR_TEXT_MUTED),
-                        ft.Text(filename, size=14, weight=ft.FontWeight.BOLD, color=COLOR_GOLD),
+                        
+                        # ဖိုင်နာမည် ပြင်ဆင်တဲ့ အကွက်
+                        ft.Text("ဖိုင်နာမည် ပြင်ဆင်ရန်", size=12, color=COLOR_TEXT_MUTED),
+                        file_name_input,
+                        
                         ft.Row([play_btn, save_btn], alignment=ft.MainAxisAlignment.CENTER, spacing=15),
                     ],
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -531,7 +561,6 @@ def main(page: ft.Page):
         ft.Row([donate_btn], alignment=ft.MainAxisAlignment.CENTER),
     )
 
-    # App စဖွင့်တာနဲ့ Preset စာရင်းကို ပြပါ
     update_presets_ui()
 
 if __name__ == "__main__":
