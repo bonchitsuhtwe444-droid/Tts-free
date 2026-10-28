@@ -11,25 +11,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      # Flet ရဲ့ တရားဝင် Build Action ကို သုံးခြင်း
+      - name: Build APK
+        id: build
+        uses: flet-dev/flet-build-action@v1
         with:
-          python-version: '3.11'
+          target: apk
 
-      - name: Setup Java JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Install Flet
-        run: pip install flet[build]
-
-      - name: Build APK (Auto Yes)
-        run: yes | flet build apk --verbose
-
+      # ထွက်လာတဲ့ APK ဖိုင်ကို Download ရယူရန် တင်ခြင်း
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: platinum-voice-apk
-          path: build/apk/*.apk
+          path: ${{ steps.build.outputs.archive-path }}
