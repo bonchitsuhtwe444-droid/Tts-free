@@ -7,17 +7,15 @@ import shutil
 from datetime import datetime
 
 # ==========================================
-# PLATINUM VOICE - GLASSMORPHISM UI
+# PLATINUM VOICE - GLASSMORPHISM UI (FINAL)
 # ==========================================
 
-# --- အရောင်သတ်မှတ်ချက်များ ---
 GRADIENT_COLORS = ["#1A0B2E", "#2D1B4E", "#0F2027", "#203A43"] 
 COLOR_GOLD = "#FFD700"
 COLOR_TEXT = "#FFFFFF"
 COLOR_TEXT_MUTED = "#B0BEC5"
 COLOR_ERROR = "#FF5252"
 
-# မှန်ချပ်ကတ်တွေအတွက် ဖောက်ထွင်းမြင်ရတဲ့ အရောင်
 GLASS_BG = "#22FFFFFF" 
 GLASS_BORDER = "#44FFFFFF" 
 GLASS_INPUT_BG = "#11000000" 
@@ -86,7 +84,6 @@ def main(page: ft.Page):
     }
     page.theme = ft.Theme(font_family="Padauk")
 
-    # နောက်ခံ Gradient သတ်မှတ်ခြင်း (Alignment အသစ်သုံးထားပါတယ်)
     page.bgcolor = ft.LinearGradient(
         begin=ft.Alignment.TOP_LEFT,
         end=ft.Alignment.BOTTOM_RIGHT,
@@ -95,7 +92,6 @@ def main(page: ft.Page):
 
     is_generating = False
 
-    # --- မှန်ချပ်ကတ် ဖန်တီးတဲ့ Function ---
     def glass_card(content, padding=20):
         return ft.Container(
             content=content,
@@ -130,13 +126,13 @@ def main(page: ft.Page):
         )
         page.open(dlg)
 
-    # 1. Header
+    # 1. Header (letter_spacing ဖြုတ်ထားပါတယ်)
     header = ft.Row(
         [
             ft.Column(
                 [
                     ft.Text("PLATINUM VOICE", size=26, weight=ft.FontWeight.W_900, color=COLOR_TEXT),
-                    ft.Text("UNLIMITED TTS", size=12, weight=ft.FontWeight.BOLD, color=COLOR_GOLD, letter_spacing=3),
+                    ft.Text("UNLIMITED TTS", size=12, weight=ft.FontWeight.BOLD, color=COLOR_GOLD),
                 ],
                 spacing=2,
             ),
@@ -243,7 +239,7 @@ def main(page: ft.Page):
     progress_bar = ft.ProgressBar(width=350, color=COLOR_GOLD, bgcolor=GLASS_INPUT_BG, visible=False, border_radius=10)
     player_container = ft.Column(visible=False, spacing=10)
     
-    # Glass Generate Button
+    # Generate Button
     generate_btn = ft.Container(
         content=ft.Row(
             [
@@ -399,7 +395,6 @@ def main(page: ft.Page):
         on_click=show_qr,
     )
 
-    # Page ပေါ်တင်ခြင်း
     page.add(
         ft.Container(height=20),
         header,
