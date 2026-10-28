@@ -16,19 +16,22 @@ jobs:
         with:
           python-version: '3.11'
 
-      # Flet ကို အရင် install လုပ်ပေးရပါမယ်
-      - name: Install Flet
-        run: pip install flet[build]
-
-      # ပြီးမှ တရားဝင် Action ကို သုံးပါမယ်
-      - name: Build APK
-        id: build
-        uses: flet-dev/flet-build-action@v1
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
         with:
-          target: apk
+          distribution: 'temurin'
+          java-version: '17'
+
+      # flet-cli ကို သီးသန့် install လုပ်ပါ
+      - name: Install Flet CLI
+        run: pip install flet-cli
+
+      # flet build command ကို တိုက်ရိုက် run ပါ
+      - name: Build APK
+        run: flet build apk --verbose
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: platinum-voice-apk
-          path: ${{ steps.build.outputs.archive-path }}
+          path: build/apk/*.apk
