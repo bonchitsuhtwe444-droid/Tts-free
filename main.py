@@ -4,9 +4,8 @@ import edge_tts
 import asyncio
 import re
 import os
-import time
+import shutil
 from datetime import datetime
-from pathlib import Path
 
 # ==========================================
 # PLATINUM VOICE - PRODUCTION READY TTS APP
@@ -28,14 +27,8 @@ VOICES = {
 
 # --- Edge TTS Limit ကို ကျော်လွှားဖို့ စာသားခွဲထုတ်တဲ့ Function ---
 def split_unlimited_text(text: str, max_chunk_size: int = 2000) -> list[str]:
-    """
-    စာသားရှည်ကြီးများကို Edge-TTS Limit အောက်မှာ ရှိအောင်
-    စာပိုဒ်၊ ဝါကျ နဲ့ နေရာလွတ်များအလိုက် Smart ဖြတ်ထုတ်ပေးသည်။
-    """
     if not text or not text.strip():
         return []
-
-    # ပထမဆုံး စာပိုဒ်အလိုက် ခွဲထုတ်
     paragraphs = re.split(r'\n\s*\n', text.strip())
     chunks = []
     current_chunk = ""
@@ -44,10 +37,8 @@ def split_unlimited_text(text: str, max_chunk_size: int = 2000) -> list[str]:
         para = para.strip()
         if not para:
             continue
-
-        # စာပိုဒ်တစ်ခုတည်းက max_chunk_size ထက်ကြီးနေရင် ဝါကျအလိုက် ထပ်ခွဲ
         if len(para) > max_chunk_size:
-            sentences = re.split(r'(?<=[။!?])\s*', para)  # မြန်မာစာပိုဒ်ကို ခွဲရန်
+            sentences = re.split(r'(?<=[။!?])\s*', para)
             for sent in sentences:
                 sent = sent.strip()
                 if not sent:
@@ -57,7 +48,6 @@ def split_unlimited_text(text: str, max_chunk_size: int = 2000) -> list[str]:
                 else:
                     if current_chunk:
                         chunks.append(current_chunk)
-                    # ဝါကျတစ်ခုတည်းက limit ထက်ကြီးရင် နေရာလွတ်အလိုက် ဖြတ်
                     if len(sent) > max_chunk_size:
                         words = sent.split(' ')
                         temp = ""
@@ -73,7 +63,6 @@ def split_unlimited_text(text: str, max_chunk_size: int = 2000) -> list[str]:
                     else:
                         current_chunk = sent
         else:
-            # စာပိုဒ်က သေးရင် ပေါင်းထည့်
             if len(current_chunk) + len(para) + 2 <= max_chunk_size:
                 current_chunk += ("\n\n" if current_chunk else "") + para
             else:
@@ -83,17 +72,10 @@ def split_unlimited_text(text: str, max_chunk_size: int = 2000) -> list[str]:
 
     if current_chunk:
         chunks.append(current_chunk)
-
-    # ရလာတဲ့ Chunk တွေကို ပြန်စစ် (အလွတ်တွေ မပါစေရန်)
     return [c for c in chunks if c.strip()]
-
 
 # --- Audio ဖိုင်များ ပေါင်းစပ်တဲ့ Function ---
 def merge_audio_files(file_paths: list[str], output_path: str) -> bool:
-    """
-    ခွဲထုတ်ထားတဲ့ MP3 ဖိုင်တွေကို တစ်ဖိုင်တည်း ပြန်ပေါင်းပေးသည်။
-    (ffmpeg မလိုဘဲ binary level မှာ ပေါင်းတဲ့ နည်းလမ်းကို သုံးထားပါတယ်)
-    """
     try:
         with open(output_path, 'wb') as outfile:
             for path in file_paths:
@@ -107,25 +89,23 @@ def merge_audio_files(file_paths: list[str], output_path: str) -> bool:
 
 
 def main(page: ft.Page):
-    # --- Page Configuration ---
     page.title = "Platinum Voice"
     page.theme_mode = ft.ThemeMode.DARK
     page.bgcolor = COLOR_BG
     page.padding = 20
     page.scroll = ft.ScrollMode.AUTO
+    
+    # Flet အသစ်အတွက် Font သတ်မှတ်ခြင်း
     page.fonts = {
         "Padauk": "https://github.com/google/fonts/raw/main/ofl/padauk/Padauk-Regular.ttf"
     }
     page.theme = ft.Theme(font_family="Padauk")
 
-    # --- State Variables ---
     is_generating = False
     generated_audio_path = None
     audio_player = None
 
-    # --- UI Components ---
-    
-    # 1. Header (Branding)
+    # 1. Header
     header = ft.Container(
         content=ft.Row(
             [
@@ -139,7 +119,7 @@ def main(page: ft.Page):
                 ft.Container(
                     content=ft.Text("PRO", size=10, weight=ft.FontWeight.BOLD, color="#000000"),
                     bgcolor=COLOR_GOLD,
-                    padding=ft.padding.symmetric(horizontal=8, vertical=4),
+                    padding=ft.padding.symmetry(horizontal=8, vertical=4), # ဒီနေရာပြင်ထားတယ်
                     border_radius=4,
                 )
             ],
@@ -184,7 +164,7 @@ def main(page: ft.Page):
                     [
                         ft.Text("Script Editor", size=16, weight=ft.FontWeight.W_600, color=COLOR_PLATINUM),
                         ft.IconButton(
-                            icon=ft.Icons.DELETE_OUTLINE,
+                            icon=ft.Icons.DELETE_OUTLINE, # ဒီနေရာပြင်ထားတယ်
                             icon_color=COLOR_ERROR,
                             icon_size=20,
                             tooltip="Clear All",
@@ -201,7 +181,7 @@ def main(page: ft.Page):
         bgcolor=COLOR_CARD,
         padding=15,
         border_radius=16,
-        border=ft.border.all(1, COLOR_PLATINUM + "33"), # subtle border
+        border=ft.Border.all(1, "#33E5E4E2"), # ဒီနေရာပြင်ထားတယ်
     )
 
     # 3. Voice & Settings Card
@@ -241,37 +221,30 @@ def main(page: ft.Page):
         bgcolor=COLOR_CARD,
         padding=15,
         border_radius=16,
-        border=ft.border.all(1, COLOR_PLATINUM + "33"),
+        border=ft.Border.all(1, "#33E5E4E2"), # ဒီနေရာပြင်ထားတယ်
     )
 
-    # 4. Status & Progress Area
     status_text = ft.Text("", size=14, color=COLOR_GOLD, text_align=ft.TextAlign.CENTER)
     progress_bar = ft.ProgressBar(width=300, color=COLOR_GOLD, bgcolor=COLOR_CARD, visible=False)
-    
-    # 5. Audio Player Area (Initially Hidden)
     player_container = ft.Column(visible=False, spacing=10)
     
-    # 6. Main Action Button
     generate_btn = ft.ElevatedButton(
         text="Generate Voice (အသံထုတ်မည်)",
-        icon=ft.Icons.PLAY_CIRCLE_FILLED,
+        icon=ft.Icons.PLAY_CIRCLE_FILLED, # ဒီနေရာပြင်ထားတယ်
         bgcolor=COLOR_GOLD,
         color="#000000",
         style=ft.ButtonStyle(
             shape=ft.RoundedRectangleBorder(radius=12),
-            padding=ft.padding.symmetric(vertical=18, horizontal=30),
+            padding=ft.padding.symmetry(vertical=18, horizontal=30), # ဒီနေရာပြင်ထားတယ်
             text_style=ft.TextStyle(size=16, weight=ft.FontWeight.BOLD),
         ),
         width=300,
     )
 
-    # --- Logic Functions ---
-
+    # --- Logic ---
     async def generate_tts_process(e):
         nonlocal is_generating, generated_audio_path, audio_player
-        
-        if is_generating:
-            return
+        if is_generating: return
         
         user_text = text_input.value
         if not user_text or not user_text.strip():
@@ -279,7 +252,6 @@ def main(page: ft.Page):
             page.update()
             return
 
-        # UI ကို ပြင်ဆင်ခြင်း
         is_generating = True
         generate_btn.disabled = True
         progress_bar.visible = True
@@ -288,45 +260,30 @@ def main(page: ft.Page):
         page.update()
 
         try:
-            # 1. စာသားခွဲထုတ်ခြင်း
             chunks = split_unlimited_text(user_text, max_chunk_size=2000)
             total_chunks = len(chunks)
-            
-            if total_chunks == 0:
-                raise ValueError("စာသားမရှိပါ။")
+            if total_chunks == 0: raise ValueError("စာသားမရှိပါ။")
 
-            # 2. ယာယီ Folder ပြင်ဆင်ခြင်း
-            cache_dir = page.get_application_cache_directory() if hasattr(page, 'get_application_cache_directory') else os.path.join(os.getcwd(), "temp_tts")
+            cache_dir = os.path.join(os.getcwd(), "temp_tts")
             os.makedirs(cache_dir, exist_ok=True)
             
-            # 3. Settings ယူခြင်း
             selected_voice = voice_dropdown.value
-            rate_val = int(rate_slider.value)
-            pitch_val = int(pitch_slider.value)
-            
-            # Edge TTS Format ပြောင်းခြင်း
-            rate_str = f"{rate_val:+d}%"
-            pitch_str = f"{pitch_val:+d}Hz"
+            rate_str = f"{int(rate_slider.value):+d}%"
+            pitch_str = f"{int(pitch_slider.value):+d}Hz"
             
             chunk_files = []
-            
-            # 4. အပိုင်းလိုက် အသံထုတ်ခြင်း
             for i, chunk in enumerate(chunks):
                 status_text.value = f"အပိုင်း {i+1}/{total_chunks} ကို ထုတ်လုပ်နေသည်... ({int((i/total_chunks)*100)}%)"
                 page.update()
                 
                 chunk_file = os.path.join(cache_dir, f"chunk_{i}.mp3")
-                
                 communicate = edge_tts.Communicate(chunk, selected_voice, rate=rate_str, pitch=pitch_str)
                 await communicate.save(chunk_file)
                 chunk_files.append(chunk_file)
                 
-                # Progress update
-                progress_val = (i + 1) / total_chunks
-                progress_bar.value = progress_val
+                progress_bar.value = (i + 1) / total_chunks
                 page.update()
 
-            # 5. ဖိုင်များပေါင်းခြင်း
             status_text.value = "အသံဖိုင်များကို ပေါင်းစပ်နေသည်..."
             page.update()
             
@@ -337,16 +294,12 @@ def main(page: ft.Page):
             if merge_audio_files(chunk_files, final_path):
                 generated_audio_path = final_path
                 status_text.value = "အသံထုတ်လုပ်မှု ပြီးစီးပါပြီ!"
-                
-                # 6. Player ကို ပြင်ဆင်ခြင်း
                 setup_player(final_path, final_filename)
-                
             else:
                 raise Exception("ဖိုင်များ ပေါင်းစပ်ရာတွင် အမှားအယွင်းရှိပါသည်။")
 
         except Exception as ex:
             status_text.value = f"အမှားအယွင်း: {str(ex)}"
-            print(f"TTS Error: {ex}")
         finally:
             is_generating = False
             generate_btn.disabled = False
@@ -355,64 +308,40 @@ def main(page: ft.Page):
 
     def setup_player(file_path, filename):
         nonlocal audio_player
-        # ရှိပြီးသား Player ရှိရင် ဖျက်မယ်
         if audio_player:
             page.overlay.remove(audio_player)
         
-        audio_player = fta.Audio(
-            src=file_path,
-            autoplay=False,
-            volume=1.0,
-        )
+        audio_player = fta.Audio(src=file_path, autoplay=False, volume=1.0)
         page.overlay.append(audio_player)
         
-        # Player Controls
         play_btn = ft.IconButton(
-            icon=ft.Icons.PLAY_ARROW,
+            icon=ft.Icons.PLAY_ARROW, # ဒီနေရာပြင်ထားတယ်
             icon_color=COLOR_GOLD,
             icon_size=40,
             on_click=lambda e: toggle_play(),
         )
         
         def toggle_play():
-            if audio_player.get_current_position() > 0 and not audio_player.is_playing():
-                # ရပ်ထားတာကို ဆက်ဖွင့် (Flet Audio မှာ resume မရှိရင် play ပြန်ခေါ်)
-                audio_player.play()
-                play_btn.icon = ft.Icons.PAUSE
-            elif audio_player.is_playing():
+            if audio_player.is_playing():
                 audio_player.pause()
-                play_btn.icon = ft.Icons.PLAY_ARROW
+                play_btn.icon = ft.Icons.PLAY_ARROW # ဒီနေရာပြင်ထားတယ်
             else:
                 audio_player.play()
-                play_btn.icon = ft.Icons.PAUSE
+                play_btn.icon = ft.Icons.PAUSE # ဒီနေရာပြင်ထားတယ်
             page.update()
 
-        # Save Button
         def save_to_download(e):
             try:
-                # Download Directory ရှာခြင်း
-                download_dir = None
-                try:
-                    # Flet ရဲ့ StoragePaths ကို သုံးပြီး Download Folder ရှာခြင်း
-                    from flet import StoragePaths
-                    sp = StoragePaths()
-                    download_dir = sp.get_downloads_directory()
-                except:
-                    # Fallback
-                    download_dir = "/storage/emulated/0/Download"
-                
-                if not download_dir or not os.path.exists(download_dir):
-                    # နောက်ထပ် Fallback
-                    download_dir = os.path.join(os.path.expanduser("~"), "Downloads")
-                    os.makedirs(download_dir, exist_ok=True)
+                # Android အတွက် ပိုမိုလုံခြုံသော သိမ်းဆည်းနည်း
+                download_dir = "/storage/emulated/0/Download"
+                if not os.path.exists(download_dir):
+                    download_dir = os.path.expanduser("~/Downloads")
+                    if not os.path.exists(download_dir):
+                        os.makedirs(download_dir, exist_ok=True)
 
                 dest_path = os.path.join(download_dir, filename)
-                
-                # ဖိုင်ကူးယူခြင်း
-                import shutil
                 shutil.copy2(file_path, dest_path)
-                
-                status_text.value = f"သိမ်းဆည်းပြီးပါပြီ: {dest_path}"
+                status_text.value = f"သိမ်းဆည်းပြီးပါပြီ: Download/{filename}"
                 page.update()
             except Exception as ex:
                 status_text.value = f"သိမ်းဆည်းမှု အမှားအယွင်း: {str(ex)}"
@@ -420,7 +349,7 @@ def main(page: ft.Page):
 
         save_btn = ft.ElevatedButton(
             text="Save to Download",
-            icon=ft.Icons.DOWNLOAD,
+            icon=ft.Icons.DOWNLOAD, # ဒီနေရာပြင်ထားတယ်
             bgcolor=COLOR_PLATINUM,
             color="#000000",
             on_click=save_to_download,
@@ -432,11 +361,7 @@ def main(page: ft.Page):
                     [
                         ft.Text("Now Playing", size=14, color=COLOR_TEXT_MUTED),
                         ft.Text(filename, size=16, weight=ft.FontWeight.BOLD, color=COLOR_PLATINUM),
-                        ft.Row(
-                            [play_btn, save_btn],
-                            alignment=ft.MainAxisAlignment.CENTER,
-                            spacing=20,
-                        ),
+                        ft.Row([play_btn, save_btn], alignment=ft.MainAxisAlignment.CENTER, spacing=20),
                     ],
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     spacing=10,
@@ -444,16 +369,14 @@ def main(page: ft.Page):
                 bgcolor=COLOR_CARD,
                 padding=20,
                 border_radius=16,
-                border=ft.border.all(2, COLOR_GOLD),
+                border=ft.Border.all(2, COLOR_GOLD), # ဒီနေရာပြင်ထားတယ်
             )
         ]
         player_container.visible = True
         page.update()
 
-    # Button ကို Event နဲ့ ချိတ်ဆက်ခြင်း
     generate_btn.on_click = generate_tts_process
 
-    # --- Layout ကို Page ပေါ်တင်ခြင်း ---
     page.add(
         header,
         editor_card,
@@ -466,4 +389,6 @@ def main(page: ft.Page):
         player_container,
     )
 
-ft.run(main)
+# Flet အသစ်အတွက် run ပုံစံ
+if __name__ == "__main__":
+    ft.run(main)
