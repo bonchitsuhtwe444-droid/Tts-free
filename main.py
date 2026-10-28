@@ -86,10 +86,10 @@ def main(page: ft.Page):
     }
     page.theme = ft.Theme(font_family="Padauk")
 
-    # နောက်ခံ Gradient သတ်မှတ်ခြင်း
+    # နောက်ခံ Gradient သတ်မှတ်ခြင်း (Alignment အသစ်သုံးထားပါတယ်)
     page.bgcolor = ft.LinearGradient(
-        begin=ft.alignment.top_left,
-        end=ft.alignment.bottom_right,
+        begin=ft.Alignment.TOP_LEFT,
+        end=ft.Alignment.BOTTOM_RIGHT,
         colors=GRADIENT_COLORS,
     )
 
@@ -109,7 +109,6 @@ def main(page: ft.Page):
                 color="#30000000",
                 offset=ft.Offset(0, 10),
             ),
-            # Blur effect ကို ဖျက်ထားပါတယ် (Version အသစ်မှာ Error မတက်အောင်)
         )
 
     def show_qr(e):
@@ -122,7 +121,7 @@ def main(page: ft.Page):
                     height=250, 
                     fit=ft.BoxFit.CONTAIN
                 ),
-                alignment=ft.Alignment.CENTER, # ဒီနေရာမှာ ပြင်ထားပါတယ်
+                alignment=ft.Alignment.CENTER,
             ),
             actions=[ft.TextButton("ပိတ်မည်", on_click=lambda e: page.close(dlg))],
             actions_alignment=ft.MainAxisAlignment.CENTER,
