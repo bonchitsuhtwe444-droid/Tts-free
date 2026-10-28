@@ -11,14 +11,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Flet ရဲ့ တရားဝင် Build Action ကို သုံးခြင်း
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Flet ကို အရင် install လုပ်ပေးရပါမယ်
+      - name: Install Flet
+        run: pip install flet[build]
+
+      # ပြီးမှ တရားဝင် Action ကို သုံးပါမယ်
       - name: Build APK
         id: build
         uses: flet-dev/flet-build-action@v1
         with:
           target: apk
 
-      # ထွက်လာတဲ့ APK ဖိုင်ကို Download ရယူရန် တင်ခြင်း
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
