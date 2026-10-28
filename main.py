@@ -7,7 +7,7 @@ import shutil
 from datetime import datetime
 
 # ==========================================
-# PLATINUM VOICE - ALL VOICES MERGED
+# PLATINUM VOICE - 14 VOICES (ALL MERGED)
 # ==========================================
 
 GRADIENT_COLORS = ["#1A0B2E", "#2D1B4E", "#0F2027", "#203A43"] 
@@ -20,7 +20,7 @@ GLASS_BG = "#22FFFFFF"
 GLASS_BORDER = "#44FFFFFF" 
 GLASS_INPUT_BG = "#11000000" 
 
-# --- အသံအားလုံး တစ်စုတည်း ပေါင်းစပ်ထားခြင်း (၁၄ မျိုး) ---
+# --- အသံ ၁၄ မျိုး တစ်စုတည်း ---
 VOICE_PROFILES = {
     "👩 မယ်နှင်း (ပုံမှန်)": {"voice": "my-MM-NilarNeural", "pitch": "+0Hz"},
     "👩 ရွှေစင် (ချိုမြိန်)": {"voice": "my-MM-NilarNeural", "pitch": "+15Hz"},
@@ -132,8 +132,8 @@ def main(page: ft.Page):
                 [
                     ft.Text("KBZ Pay", size=22, weight=ft.FontWeight.W_900, color=COLOR_TEXT),
                     ft.Container(height=10),
-                    # assets ဖိုဒါထဲက ပုံကို တိုက်ရိုက်ခေါ်ထားပါတယ်
-                    ft.Image(src="assets/kpay_qr.jpg", width=250, height=250, fit=ft.BoxFit.CONTAIN),
+                    # ဒီနေရာမှာ "assets/" ကို ဖြုတ်လိုက်ပါပြီ။ နာမည်ပဲ ထည့်ရပါမယ်။
+                    ft.Image(src="kpay_qr.jpg", width=250, height=250, fit=ft.BoxFit.CONTAIN),
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 spacing=5,
@@ -221,7 +221,7 @@ def main(page: ft.Page):
         )
     )
 
-    # 3. Voice Settings (Preview လုံးဝ မပါတော့ပါ)
+    # 3. Voice Settings
     voice_dropdown = ft.Dropdown(
         options=[ft.dropdown.Option(key=k, text=k) for k in VOICE_PROFILES.keys()],
         value=list(VOICE_PROFILES.keys())[0],
