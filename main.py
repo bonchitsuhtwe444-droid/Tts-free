@@ -4,10 +4,11 @@ import asyncio
 import re
 import os
 import shutil
+import json
 from datetime import datetime
 
 # ==========================================
-# PLATINUM VOICE - 14 VOICES (ALL MERGED)
+# PLATINUM VOICE - PRESETS & CUSTOM SETTINGS
 # ==========================================
 
 GRADIENT_COLORS = ["#1A0B2E", "#2D1B4E", "#0F2027", "#203A43"] 
@@ -19,25 +20,6 @@ COLOR_ERROR = "#FF5252"
 GLASS_BG = "#22FFFFFF" 
 GLASS_BORDER = "#44FFFFFF" 
 GLASS_INPUT_BG = "#11000000" 
-
-# --- အသံ ၁၄ မျိုး တစ်စုတည်း ---
-VOICE_PROFILES = {
-    "👩 မယ်နှင်း (ပုံမှန်)": {"voice": "my-MM-NilarNeural", "pitch": "+0Hz"},
-    "👩 ရွှေစင် (ချိုမြိန်)": {"voice": "my-MM-NilarNeural", "pitch": "+15Hz"},
-    "👩 သီတာ (တည်ငြိမ်)": {"voice": "my-MM-NilarNeural", "pitch": "-10Hz"},
-    "👩 ချယ်ရီ (စိတ်လှုပ်ရှား)": {"voice": "my-MM-NilarNeural", "pitch": "+5Hz"},
-    "👩 အေးမြ (လေးလံ)": {"voice": "my-MM-NilarNeural", "pitch": "-20Hz"},
-    "👩 စုမြတ် (နူးညံ့)": {"voice": "my-MM-NilarNeural", "pitch": "+25Hz"},
-    "👩 ခင်ဝေ (အေးဆေး)": {"voice": "my-MM-NilarNeural", "pitch": "-5Hz"},
-    
-    "👨 သီဟ (ပုံမှန်)": {"voice": "my-MM-ThihaNeural", "pitch": "+0Hz"},
-    "👨 ဇော်နိုင် (လေးလံခိုင်မာ)": {"voice": "my-MM-ThihaNeural", "pitch": "-15Hz"},
-    "👨 မိုးကျော် (လူငယ်)": {"voice": "my-MM-ThihaNeural", "pitch": "+15Hz"},
-    "👨 ကျော်ဇော (သတင်းဖတ်)": {"voice": "my-MM-ThihaNeural", "pitch": "+10Hz"},
-    "👨 နိုင်ဦး (အမြန်)": {"voice": "my-MM-ThihaNeural", "pitch": "+5Hz"},
-    "👨 မင်းခန့် (စွမ်းအား)": {"voice": "my-MM-ThihaNeural", "pitch": "+25Hz"},
-    "👨 ဇော်ဇော် (အသံဝယ်)": {"voice": "my-MM-ThihaNeural", "pitch": "-25Hz"}
-}
 
 def split_unlimited_text(text: str, max_chunk_size: int = 2000) -> list[str]:
     if not text or not text.strip(): return []
@@ -91,7 +73,8 @@ def main(page: ft.Page):
     page.title = "Platinum Voice"
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 20
-    page.scroll = ft.ScrollMode.AUTO
+    # Scrollbar အဖြူတန်းကြီး မပေါ်စေရန် HIDDEN လုပ်ထားပါတယ်
+    page.scroll = ft.ScrollMode.HIDDEN 
     
     page.fonts = {
         "Padauk": "https://github.com/google/fonts/raw/main/ofl/padauk/Padauk-Regular.ttf"
@@ -105,6 +88,21 @@ def main(page: ft.Page):
     )
 
     is_generating = False
+
+    # --- Presets သိမ်းဆည်းမှု စနစ် ---
+    def load_presets():
+        try:
+            presets_str = page.client_storage.get("my_presets")
+            if presets_str:
+                return json.loads(presets_str)
+        except:
+            pass
+        return {}
+
+    def save_presets_to_storage(presets_dict):
+        page.client_storage.set("my_presets", json.dumps(presets_dict))
+
+    presets_data = load_presets()
 
     def glass_card(content, padding=20):
         return ft.Container(
@@ -132,7 +130,6 @@ def main(page: ft.Page):
                 [
                     ft.Text("KBZ Pay", size=22, weight=ft.FontWeight.W_900, color=COLOR_TEXT),
                     ft.Container(height=10),
-                    # ဒီနေရာမှာ "assets/" ကို ဖြုတ်လိုက်ပါပြီ။ နာမည်ပဲ ထည့်ရပါမယ်။
                     ft.Image(src="kpay_qr.jpg", width=250, height=250, fit=ft.BoxFit.CONTAIN),
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -223,8 +220,11 @@ def main(page: ft.Page):
 
     # 3. Voice Settings
     voice_dropdown = ft.Dropdown(
-        options=[ft.dropdown.Option(key=k, text=k) for k in VOICE_PROFILES.keys()],
-        value=list(VOICE_PROFILES.keys())[0],
+        options=[
+            ft.dropdown.Option(key="my-MM-NilarNeural", text="👩 နီလာ (Nilar)"),
+            ft.dropdown.Option(key="my-MM-ThihaNeural", text="👨 သီဟ (Thiha)")
+        ],
+        value="my-MM-NilarNeural",
         bgcolor=GLASS_INPUT_BG,
         border_color=GLASS_BORDER,
         color=COLOR_TEXT,
@@ -237,15 +237,115 @@ def main(page: ft.Page):
         min=-50, max=50, divisions=100, value=0, label="{value}%",
         active_color=COLOR_GOLD, inactive_color="#44FFFFFF",
     )
+    
+    pitch_slider = ft.Slider(
+        min=-30, max=30, divisions=60, value=0, label="{value}Hz",
+        active_color=COLOR_GOLD, inactive_color="#44FFFFFF",
+    )
+
+    # --- Preset စနစ် UI နှင့် Logic ---
+    preset_name_input = ft.TextField(
+        hint_text="သတ်မှတ်ချက် အမည်ပေးပါ (ဥပမာ - ရွှေစင်)",
+        bgcolor=GLASS_INPUT_BG,
+        border_color="transparent",
+        color=COLOR_TEXT,
+        text_size=14,
+        content_padding=15,
+        border_radius=10,
+    )
+
+    presets_list_container = ft.Column(spacing=10)
+
+    def update_presets_ui():
+        presets_list_container.controls.clear()
+        if not presets_data:
+            presets_list_container.controls.append(
+                ft.Text("သိမ်းထားသော သတ်မှတ်ချက် မရှိပါ။", size=12, color=COLOR_TEXT_MUTED, italic=True)
+            )
+        else:
+            for p_name, p_data in presets_data.items():
+                def make_apply(p_name=p_name, p_data=p_data):
+                    return lambda e: apply_preset(p_name, p_data)
+                
+                def make_delete(p_name=p_name):
+                    return lambda e: delete_preset(p_name)
+
+                row = ft.Row(
+                    [
+                        ft.Text(p_name, color=COLOR_GOLD, weight=ft.FontWeight.BOLD, expand=True),
+                        ft.IconButton(ft.Icons.PLAY_ARROW, icon_color=COLOR_TEXT, icon_size=20, tooltip="သုံးမည်", on_click=make_apply()),
+                        ft.IconButton(ft.Icons.DELETE, icon_color=COLOR_ERROR, icon_size=20, tooltip="ဖျက်မည်", on_click=make_delete()),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                )
+                presets_list_container.controls.append(row)
+        page.update()
+
+    def save_preset(e):
+        name = preset_name_input.value.strip()
+        if not name:
+            status_text.value = "ကျေးဇူးပြု၍ သတ်မှတ်ချက် အမည်ပေးပါ။"
+            page.update()
+            return
+        
+        presets_data[name] = {
+            "voice": voice_dropdown.value,
+            "rate": rate_slider.value,
+            "pitch": pitch_slider.value
+        }
+        save_presets_to_storage(presets_data)
+        preset_name_input.value = ""
+        status_text.value = f"'{name}' ကို သိမ်းဆည်းပြီးပါပြီ။"
+        update_presets_ui()
+
+    def apply_preset(name, data):
+        voice_dropdown.value = data["voice"]
+        rate_slider.value = data["rate"]
+        pitch_slider.value = data["pitch"]
+        status_text.value = f"'{name}' သတ်မှတ်ချက်ကို အသုံးပြုနေသည်။"
+        page.update()
+
+    def delete_preset(name):
+        if name in presets_data:
+            del presets_data[name]
+            save_presets_to_storage(presets_data)
+            status_text.value = f"'{name}' ကို ဖျက်လိုက်ပါပြီ။"
+            update_presets_ui()
+
+    save_preset_btn = ft.Button(
+        content=ft.Text("Save Preset"),
+        icon=ft.Icons.SAVE,
+        bgcolor=COLOR_GOLD,
+        color="#000000",
+        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10)),
+        on_click=save_preset,
+    )
 
     settings_card = glass_card(
         ft.Column(
             [
                 ft.Row([ft.Icon(ft.Icons.TUNE, color=COLOR_GOLD, size=22), ft.Text("VOICE SETTINGS", size=14, weight=ft.FontWeight.BOLD, color=COLOR_TEXT)]),
-                ft.Text("အသံပုံစံ ၁၄ မျိုး ရွေးချယ်ပါ", size=12, color=COLOR_TEXT_MUTED),
+                ft.Text("အသံရွေးချယ်ပါ", size=12, color=COLOR_TEXT_MUTED),
                 voice_dropdown,
+                
                 ft.Text("Speed (အမြန်နှုန်း)", size=12, color=COLOR_TEXT_MUTED),
                 rate_slider,
+                
+                ft.Text("Pitch (အသံအနိမ့်အမြင့်)", size=12, color=COLOR_TEXT_MUTED),
+                pitch_slider,
+
+                ft.Divider(color=GLASS_BORDER),
+                ft.Text("သတ်မှတ်ချက် သိမ်းဆည်းရန်", size=12, color=COLOR_TEXT_MUTED),
+                ft.Row(
+                    [
+                        preset_name_input,
+                        save_preset_btn
+                    ],
+                    spacing=10,
+                ),
+                ft.Divider(color=GLASS_BORDER),
+                ft.Text("သိမ်းထားသော သတ်မှတ်ချက်များ", size=12, weight=ft.FontWeight.BOLD, color=COLOR_GOLD),
+                presets_list_container,
             ],
             spacing=15,
         )
@@ -296,8 +396,9 @@ def main(page: ft.Page):
             cache_dir = os.path.join(os.getcwd(), "temp_tts")
             os.makedirs(cache_dir, exist_ok=True)
             
-            selected_profile = VOICE_PROFILES[voice_dropdown.value]
+            selected_voice = voice_dropdown.value
             rate_str = f"{int(rate_slider.value):+d}%"
+            pitch_str = f"{int(pitch_slider.value):+d}Hz"
             
             chunk_files = []
             for i, chunk in enumerate(chunks):
@@ -307,9 +408,9 @@ def main(page: ft.Page):
                 chunk_file = os.path.join(cache_dir, f"chunk_{i}.mp3")
                 communicate = edge_tts.Communicate(
                     chunk, 
-                    selected_profile["voice"], 
+                    selected_voice, 
                     rate=rate_str, 
-                    pitch=selected_profile["pitch"]
+                    pitch=pitch_str
                 )
                 await communicate.save(chunk_file)
                 chunk_files.append(chunk_file)
@@ -429,6 +530,9 @@ def main(page: ft.Page):
         ft.Container(height=20),
         ft.Row([donate_btn], alignment=ft.MainAxisAlignment.CENTER),
     )
+
+    # App စဖွင့်တာနဲ့ Preset စာရင်းကို ပြပါ
+    update_presets_ui()
 
 if __name__ == "__main__":
     ft.run(main)
