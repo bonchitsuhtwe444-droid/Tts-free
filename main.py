@@ -8,7 +8,7 @@ import json
 from datetime import datetime
 
 # ==========================================
-# PLATINUM VOICE - PRESETS & CUSTOM FILENAME
+# PLATINUM VOICE - PRESETS (SharedPreferences)
 # ==========================================
 
 GRADIENT_COLORS = ["#1A0B2E", "#2D1B4E", "#0F2027", "#203A43"] 
@@ -88,20 +88,40 @@ def main(page: ft.Page):
 
     is_generating = False
 
-    # --- Presets သိမ်းဆည်းမှု စနစ် ---
-    def load_presets():
+    # --- Presets သိမ်းဆည်းမှု စနစ် (SharedPreferences ကို သုံးထားပါတယ်) ---
+    prefs = ft.SharedPreferences()
+
+    async def load_presets_async():
         try:
-            presets_str = page.client_storage.get("my_presets")
+            presets_str = await prefs.get("my_presets")
             if presets_str:
                 return json.loads(presets_str)
         except:
             pass
         return {}
 
-    def save_presets_to_storage(presets_dict):
-        page.client_storage.set("my_presets", json.dumps(presets_dict))
+    async def save_presets_to_storage_async(presets_dict):
+        try:
+            await prefs.set("my_presets", json.dumps(presets_dict))
+        except Exception as ex:
+            print(f"Save Preset Error: {ex}")
 
-    presets_data = load_presets()
+    presets_data = {}
+
+    def load_presets():
+        nonlocal presets_data
+        future = page.run_task(load_presets_async)
+        def on_done(f):
+            nonlocal presets_data
+            try:
+                presets_data = f.result()
+                update_presets_ui()
+            except Exception:
+                pass
+        future.add_done_callback(on_done)
+
+    def save_presets_to_storage(presets_dict):
+        page.run_task(save_presets_to_storage_async, presets_dict)
 
     def glass_card(content, padding=20):
         return ft.Container(
@@ -336,7 +356,6 @@ def main(page: ft.Page):
                 ft.Divider(color=GLASS_BORDER),
                 ft.Text("သတ်မှတ်ချက် သိမ်းဆည်းရန်", size=12, color=COLOR_TEXT_MUTED),
                 
-                # ခလုတ်ကို အောက်ကို ရွှေ့ပြီး နေရာချထားပါတယ်
                 ft.Column(
                     [
                         preset_name_input,
@@ -443,7 +462,6 @@ def main(page: ft.Page):
             page.update()
 
     def setup_player_ui(file_path, filename):
-        # ဖိုင်နာမည် ပြင်ဆင်နိုင်တဲ့ အကွက် (အစပိုင်းမှာ timestamp ဖြုတ်ထားပြီး ပြပေးမယ်)
         default_name = filename.replace(".mp3", "")
         file_name_input = ft.TextField(
             value=default_name,
@@ -467,16 +485,13 @@ def main(page: ft.Page):
 
         def save_to_download(e):
             try:
-                # စိတ်ကြိုက်နာမည် ရိုက်ထည့်ထားရင် အဲဒါကို ယူမယ်
                 custom_name = file_name_input.value.strip()
-                
-                # ဖိုင်နာမည်မှာ သုံးလို့မရတဲ့ သင်္ကေတတွေ (\, /, :, *, ?, ", <, >, |) ကို ဖျက်မယ်
                 custom_name = re.sub(r'[\\/*?:"<>|]', "", custom_name)
                 
                 if custom_name:
                     safe_filename = f"{custom_name}.mp3"
                 else:
-                    safe_filename = filename # နာမည်မပေးရင် မူရင်းအတိုင်း
+                    safe_filename = filename
 
                 download_dir = "/storage/emulated/0/Download"
                 if not os.path.exists(download_dir):
@@ -519,7 +534,6 @@ def main(page: ft.Page):
                     [
                         ft.Text("GENERATED AUDIO", size=12, weight=ft.FontWeight.BOLD, color=COLOR_TEXT_MUTED),
                         
-                        # ဖိုင်နာမည် ပြင်ဆင်တဲ့ အကွက်
                         ft.Text("ဖိုင်နာမည် ပြင်ဆင်ရန်", size=12, color=COLOR_TEXT_MUTED),
                         file_name_input,
                         
@@ -561,7 +575,8 @@ def main(page: ft.Page):
         ft.Row([donate_btn], alignment=ft.MainAxisAlignment.CENTER),
     )
 
-    update_presets_ui()
+    # App စဖွင့်တာနဲ့ Preset စာရင်းကို Load လုပ်ပါ
+    load_presets()
 
 if __name__ == "__main__":
     ft.run(main)
