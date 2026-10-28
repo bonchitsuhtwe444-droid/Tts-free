@@ -11,43 +11,36 @@ from datetime import datetime
 # PLATINUM VOICE - PRODUCTION READY TTS APP
 # ==========================================
 
-# --- အရောင်သတ်မှတ်ချက်များ (Luxury Theme) ---
-COLOR_BG = "#0D0E12"          # Deep Obsidian
-COLOR_CARD = "#1A1D24"        # ကတ်နောက်ခံ
-COLOR_GOLD = "#FFD700"        # ရွှေရောင် Accent
-COLOR_PLATINUM = "#E5E4E2"    # ပလက်တီနမ်
+COLOR_BG = "#0D0E12"
+COLOR_CARD = "#1A1D24"
+COLOR_GOLD = "#FFD700"
+COLOR_PLATINUM = "#E5E4E2"
 COLOR_TEXT_MUTED = "#8B8E96"
 COLOR_ERROR = "#FF4D4D"
 
-# --- Voice ရွေးချယ်စရာများ ---
 VOICES = {
     "မိန်းကလေးအသံ (နီလာ)": "my-MM-NilarNeural",
     "ယောက်ျားလေးအသံ (သီဟ)": "my-MM-ThihaNeural"
 }
 
-# --- Edge TTS Limit ကို ကျော်လွှားဖို့ စာသားခွဲထုတ်တဲ့ Function ---
 def split_unlimited_text(text: str, max_chunk_size: int = 2000) -> list[str]:
     if not text or not text.strip():
         return []
     paragraphs = re.split(r'\n\s*\n', text.strip())
     chunks = []
     current_chunk = ""
-
     for para in paragraphs:
         para = para.strip()
-        if not para:
-            continue
+        if not para: continue
         if len(para) > max_chunk_size:
             sentences = re.split(r'(?<=[။!?])\s*', para)
             for sent in sentences:
                 sent = sent.strip()
-                if not sent:
-                    continue
+                if not sent: continue
                 if len(current_chunk) + len(sent) + 1 <= max_chunk_size:
                     current_chunk += (" " if current_chunk else "") + sent
                 else:
-                    if current_chunk:
-                        chunks.append(current_chunk)
+                    if current_chunk: chunks.append(current_chunk)
                     if len(sent) > max_chunk_size:
                         words = sent.split(' ')
                         temp = ""
@@ -55,26 +48,19 @@ def split_unlimited_text(text: str, max_chunk_size: int = 2000) -> list[str]:
                             if len(temp) + len(w) + 1 <= max_chunk_size:
                                 temp += (" " if temp else "") + w
                             else:
-                                if temp:
-                                    chunks.append(temp)
+                                if temp: chunks.append(temp)
                                 temp = w
-                        if temp:
-                            current_chunk = temp
-                    else:
-                        current_chunk = sent
+                        if temp: current_chunk = temp
+                    else: current_chunk = sent
         else:
             if len(current_chunk) + len(para) + 2 <= max_chunk_size:
                 current_chunk += ("\n\n" if current_chunk else "") + para
             else:
-                if current_chunk:
-                    chunks.append(current_chunk)
+                if current_chunk: chunks.append(current_chunk)
                 current_chunk = para
-
-    if current_chunk:
-        chunks.append(current_chunk)
+    if current_chunk: chunks.append(current_chunk)
     return [c for c in chunks if c.strip()]
 
-# --- Audio ဖိုင်များ ပေါင်းစပ်တဲ့ Function ---
 def merge_audio_files(file_paths: list[str], output_path: str) -> bool:
     try:
         with open(output_path, 'wb') as outfile:
@@ -87,7 +73,6 @@ def merge_audio_files(file_paths: list[str], output_path: str) -> bool:
         print(f"Merge Error: {e}")
         return False
 
-
 def main(page: ft.Page):
     page.title = "Platinum Voice"
     page.theme_mode = ft.ThemeMode.DARK
@@ -95,7 +80,7 @@ def main(page: ft.Page):
     page.padding = 20
     page.scroll = ft.ScrollMode.AUTO
     
-    # Flet အသစ်အတွက် Font သတ်မှတ်ခြင်း
+    # Flet အသစ်အတွက် Font Setting
     page.fonts = {
         "Padauk": "https://github.com/google/fonts/raw/main/ofl/padauk/Padauk-Regular.ttf"
     }
@@ -119,13 +104,13 @@ def main(page: ft.Page):
                 ft.Container(
                     content=ft.Text("PRO", size=10, weight=ft.FontWeight.BOLD, color="#000000"),
                     bgcolor=COLOR_GOLD,
-                    padding=ft.padding.symmetry(horizontal=8, vertical=4), # ဒီနေရာပြင်ထားတယ်
+                    padding=ft.Padding.symmetric(horizontal=8, vertical=4), # ပြင်ပြီး
                     border_radius=4,
                 )
             ],
             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
         ),
-        padding=ft.padding.only(bottom=20),
+        padding=ft.Padding.only(bottom=20), # ပြင်ပြီး
     )
 
     # 2. Script Editor Card
@@ -164,7 +149,7 @@ def main(page: ft.Page):
                     [
                         ft.Text("Script Editor", size=16, weight=ft.FontWeight.W_600, color=COLOR_PLATINUM),
                         ft.IconButton(
-                            icon=ft.Icons.DELETE_OUTLINE, # ဒီနေရာပြင်ထားတယ်
+                            icon=ft.Icons.DELETE_OUTLINE, 
                             icon_color=COLOR_ERROR,
                             icon_size=20,
                             tooltip="Clear All",
@@ -181,7 +166,7 @@ def main(page: ft.Page):
         bgcolor=COLOR_CARD,
         padding=15,
         border_radius=16,
-        border=ft.Border.all(1, "#33E5E4E2"), # ဒီနေရာပြင်ထားတယ်
+        border=ft.Border.all(1, "#33E5E4E2"),
     )
 
     # 3. Voice & Settings Card
@@ -221,7 +206,7 @@ def main(page: ft.Page):
         bgcolor=COLOR_CARD,
         padding=15,
         border_radius=16,
-        border=ft.Border.all(1, "#33E5E4E2"), # ဒီနေရာပြင်ထားတယ်
+        border=ft.Border.all(1, "#33E5E4E2"),
     )
 
     status_text = ft.Text("", size=14, color=COLOR_GOLD, text_align=ft.TextAlign.CENTER)
@@ -230,12 +215,12 @@ def main(page: ft.Page):
     
     generate_btn = ft.ElevatedButton(
         text="Generate Voice (အသံထုတ်မည်)",
-        icon=ft.Icons.PLAY_CIRCLE_FILLED, # ဒီနေရာပြင်ထားတယ်
+        icon=ft.Icons.PLAY_CIRCLE_FILLED, 
         bgcolor=COLOR_GOLD,
         color="#000000",
         style=ft.ButtonStyle(
             shape=ft.RoundedRectangleBorder(radius=12),
-            padding=ft.padding.symmetry(vertical=18, horizontal=30), # ဒီနေရာပြင်ထားတယ်
+            padding=ft.Padding.symmetric(vertical=18, horizontal=30), # ပြင်ပြီး
             text_style=ft.TextStyle(size=16, weight=ft.FontWeight.BOLD),
         ),
         width=300,
@@ -315,7 +300,7 @@ def main(page: ft.Page):
         page.overlay.append(audio_player)
         
         play_btn = ft.IconButton(
-            icon=ft.Icons.PLAY_ARROW, # ဒီနေရာပြင်ထားတယ်
+            icon=ft.Icons.PLAY_ARROW, 
             icon_color=COLOR_GOLD,
             icon_size=40,
             on_click=lambda e: toggle_play(),
@@ -324,15 +309,14 @@ def main(page: ft.Page):
         def toggle_play():
             if audio_player.is_playing():
                 audio_player.pause()
-                play_btn.icon = ft.Icons.PLAY_ARROW # ဒီနေရာပြင်ထားတယ်
+                play_btn.icon = ft.Icons.PLAY_ARROW 
             else:
                 audio_player.play()
-                play_btn.icon = ft.Icons.PAUSE # ဒီနေရာပြင်ထားတယ်
+                play_btn.icon = ft.Icons.PAUSE 
             page.update()
 
         def save_to_download(e):
             try:
-                # Android အတွက် ပိုမိုလုံခြုံသော သိမ်းဆည်းနည်း
                 download_dir = "/storage/emulated/0/Download"
                 if not os.path.exists(download_dir):
                     download_dir = os.path.expanduser("~/Downloads")
@@ -349,7 +333,7 @@ def main(page: ft.Page):
 
         save_btn = ft.ElevatedButton(
             text="Save to Download",
-            icon=ft.Icons.DOWNLOAD, # ဒီနေရာပြင်ထားတယ်
+            icon=ft.Icons.DOWNLOAD, 
             bgcolor=COLOR_PLATINUM,
             color="#000000",
             on_click=save_to_download,
@@ -369,7 +353,7 @@ def main(page: ft.Page):
                 bgcolor=COLOR_CARD,
                 padding=20,
                 border_radius=16,
-                border=ft.Border.all(2, COLOR_GOLD), # ဒီနေရာပြင်ထားတယ်
+                border=ft.Border.all(2, COLOR_GOLD), 
             )
         ]
         player_container.visible = True
@@ -389,6 +373,5 @@ def main(page: ft.Page):
         player_container,
     )
 
-# Flet အသစ်အတွက် run ပုံစံ
 if __name__ == "__main__":
     ft.run(main)
