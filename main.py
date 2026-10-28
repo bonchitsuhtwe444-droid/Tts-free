@@ -4,7 +4,6 @@ import asyncio
 import re
 import os
 import shutil
-import webbrowser
 from datetime import datetime
 
 # ==========================================
@@ -86,6 +85,26 @@ def main(page: ft.Page):
     page.theme = ft.Theme(font_family="Padauk")
 
     is_generating = False
+
+    # QR Code Dialog ဖွင့်တဲ့ Function
+    def show_qr(e):
+        dlg = ft.AlertDialog(
+            title=ft.Text("မုန့်ဖိုးပေးရန်", color=COLOR_GOLD, text_align=ft.TextAlign.CENTER),
+            content=ft.Container(
+                content=ft.Image(
+                    src="kpay_qr.jpg", # ဒီနေရာမှာ သင့်ပုံနာမည် အတိအကျ ထည့်ပါ
+                    width=250,
+                    height=250,
+                    fit=ft.BoxFit.CONTAIN,
+                ),
+                alignment=ft.alignment.center,
+            ),
+            actions=[
+                ft.TextButton("ပိတ်မည်", on_click=lambda e: page.close(dlg)),
+            ],
+            actions_alignment=ft.MainAxisAlignment.CENTER,
+        )
+        page.open(dlg)
 
     # 1. Header
     header = ft.Container(
@@ -287,10 +306,8 @@ def main(page: ft.Page):
             page.update()
 
     def setup_player_ui(file_path, filename):
-        # ဖုန်းရဲ့ System ကနေ တိုက်ရိုက် ဖွင့်ပေးမယ့် Function
         def play_audio(e):
             try:
-                # Flet ရဲ့ launch_url ကို သုံးပြီး ဖုန်း App Player ကို ခေါ်မယ်
                 page.launch_url(f"file://{file_path}")
                 status_text.value = "အသံဖွင့်နေသည်..."
                 page.update()
@@ -352,6 +369,18 @@ def main(page: ft.Page):
 
     generate_btn.on_click = generate_tts_process
 
+    # အောက်ဆုံးမှာ Donate ခလုတ်လေး ထည့်ထားပါတယ်
+    donate_btn = ft.TextButton(
+        content=ft.Row(
+            [
+                ft.Icon(ft.Icons.COFFEE, color=COLOR_GOLD, size=18),
+                ft.Text("မုန့်ဖိုးပေးရန် (Donate)", color=COLOR_GOLD, size=14),
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+        ),
+        on_click=show_qr,
+    )
+
     page.add(
         header,
         editor_card,
@@ -362,6 +391,8 @@ def main(page: ft.Page):
         ft.Row([progress_bar], alignment=ft.MainAxisAlignment.CENTER),
         status_text,
         player_container,
+        ft.Container(height=20),
+        ft.Row([donate_btn], alignment=ft.MainAxisAlignment.CENTER), # ဒီနေရာမှာ ပေါ်လာပါမယ်
     )
 
 if __name__ == "__main__":
