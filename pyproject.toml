@@ -1,0 +1,19 @@
+[project]
+name = "platinum-voice"
+version = "1.0.0"
+description = "Unlimited Burmese TTS App"
+requires-python = ">=3.9"
+
+[tool.flet]
+org = "com.platinumvoice"
+product = "Platinum Voice"
+company = "Platinum Voice"
+copyright = "Copyright (c) 2025"
+
+[tool.flet.app]
+path = "."
+
+[tool.flet.android.permission]
+"android.permission.INTERNET" = true
+"android.permission.READ_EXTERNAL_STORAGE" = true
+"android.permission.WRITE_EXTERNAL_STORAGE" = true
