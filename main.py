@@ -7,7 +7,7 @@ import shutil
 from datetime import datetime
 
 # ==========================================
-# PLATINUM VOICE - GLASSMORPHISM UI (FINAL)
+# PLATINUM VOICE - 10 VOICES + PREVIEW
 # ==========================================
 
 GRADIENT_COLORS = ["#1A0B2E", "#2D1B4E", "#0F2027", "#203A43"] 
@@ -20,9 +20,21 @@ GLASS_BG = "#22FFFFFF"
 GLASS_BORDER = "#44FFFFFF" 
 GLASS_INPUT_BG = "#11000000" 
 
-VOICES = {
-    "မိန်းကလေးအသံ (နီလာ)": "my-MM-NilarNeural",
-    "ယောက်ျားလေးအသံ (သီဟ)": "my-MM-ThihaNeural"
+# --- အသံအသစ် ၁၀ မျိုး သတ်မှတ်ခြင်း (နာမည်အသစ်များဖြင့်) ---
+VOICE_PROFILES = {
+    # မိန်းကလေးအသံများ (နာမည်အသစ်များ)
+    "👩 မယ်နှင်း (ပုံမှန်)": {"voice": "my-MM-NilarNeural", "pitch": "+0Hz", "rate": "+0%"},
+    "👩 ရွှေစင် (ချိုမြိန်)": {"voice": "my-MM-NilarNeural", "pitch": "+15Hz", "rate": "+0%"},
+    "👩 သီတာ (တည်ငြိမ်)": {"voice": "my-MM-NilarNeural", "pitch": "-10Hz", "rate": "-10%"},
+    "👩 ချယ်ရီ (စိတ်လှုပ်ရှား)": {"voice": "my-MM-NilarNeural", "pitch": "+5Hz", "rate": "+20%"},
+    "👩 အေးမြ (လေးလံ)": {"voice": "my-MM-NilarNeural", "pitch": "-20Hz", "rate": "+0%"},
+    
+    # ယောက်ျားလေးအသံများ
+    "👨 သီဟ (ပုံမှန်)": {"voice": "my-MM-ThihaNeural", "pitch": "+0Hz", "rate": "+0%"},
+    "👨 ဇော်နိုင် (လေးလံခိုင်မာ)": {"voice": "my-MM-ThihaNeural", "pitch": "-15Hz", "rate": "+0%"},
+    "👨 မိုးကျော် (လူငယ်)": {"voice": "my-MM-ThihaNeural", "pitch": "+15Hz", "rate": "+0%"},
+    "👨 ကျော်ဇော (သတင်းဖတ်)": {"voice": "my-MM-ThihaNeural", "pitch": "+0Hz", "rate": "-5%"},
+    "👨 နိုင်ဦး (အမြန်)": {"voice": "my-MM-ThihaNeural", "pitch": "+5Hz", "rate": "+20%"}
 }
 
 def split_unlimited_text(text: str, max_chunk_size: int = 2000) -> list[str]:
@@ -91,6 +103,7 @@ def main(page: ft.Page):
     )
 
     is_generating = False
+    is_previewing = False
 
     def glass_card(content, padding=20):
         return ft.Container(
@@ -107,7 +120,6 @@ def main(page: ft.Page):
             ),
         )
 
-    # Flet အသစ်အတွက် Dialog ဖွင့်/ပိတ် စနစ်
     def close_dlg(dlg):
         dlg.open = False
         page.update()
@@ -116,12 +128,7 @@ def main(page: ft.Page):
         dlg = ft.AlertDialog(
             title=ft.Text("မုန့်ဖိုးပေးရန်", color=COLOR_GOLD, text_align=ft.TextAlign.CENTER),
             content=ft.Container(
-                content=ft.Image(
-                    src="kpay_qr.jpg", 
-                    width=250, 
-                    height=250, 
-                    fit=ft.BoxFit.CONTAIN
-                ),
+                content=ft.Image(src="kpay_qr.jpg", width=250, height=250, fit=ft.BoxFit.CONTAIN),
                 alignment=ft.Alignment.CENTER,
             ),
             actions=[ft.TextButton("ပိတ်မည်", on_click=lambda e: close_dlg(dlg))],
@@ -208,8 +215,8 @@ def main(page: ft.Page):
 
     # 3. Voice Settings
     voice_dropdown = ft.Dropdown(
-        options=[ft.dropdown.Option(key=v, text=k) for k, v in VOICES.items()],
-        value="my-MM-NilarNeural",
+        options=[ft.dropdown.Option(key=k, text=k) for k in VOICE_PROFILES.keys()],
+        value=list(VOICE_PROFILES.keys())[0],
         bgcolor=GLASS_INPUT_BG,
         border_color=GLASS_BORDER,
         color=COLOR_TEXT,
@@ -218,27 +225,63 @@ def main(page: ft.Page):
         content_padding=15,
     )
 
-    rate_slider = ft.Slider(
-        min=-50, max=50, divisions=100, value=0, label="{value}%",
-        active_color=COLOR_GOLD, inactive_color="#44FFFFFF",
-    )
-    pitch_slider = ft.Slider(
-        min=-30, max=30, divisions=60, value=0, label="{value}Hz",
-        active_color=COLOR_GOLD, inactive_color="#44FFFFFF",
+    # Preview ခလုတ်
+    def preview_voice(e):
+        nonlocal is_previewing
+        if is_previewing: return
+        is_previewing = True
+        status_text.value = "အသံစမ်းသပ်နေသည်..."
+        page.update()
+
+        selected_profile = VOICE_PROFILES[voice_dropdown.value]
+        
+        async def run_preview():
+            try:
+                cache_dir = os.path.join(os.getcwd(), "temp_tts")
+                os.makedirs(cache_dir, exist_ok=True)
+                preview_path = os.path.join(cache_dir, "preview.mp3")
+                
+                # စမ်းသပ်မယ့် စာသား
+                preview_text = "မင်္ဂလာပါ၊ ကျွန်တော်တို့ Platinum Voice မှ ကြိုဆိုပါတယ်။ ဒါက အသံစမ်းသပ်နေတာ ဖြစ်ပါတယ်။"
+                
+                communicate = edge_tts.Communicate(
+                    preview_text, 
+                    selected_profile["voice"], 
+                    rate=selected_profile["rate"], 
+                    pitch=selected_profile["pitch"]
+                )
+                await communicate.save(preview_path)
+                page.launch_url(f"file://{preview_path}")
+                status_text.value = "အသံဖွင့်နေသည်..."
+            except Exception as ex:
+                status_text.value = f"Error: {str(ex)}"
+            finally:
+                is_previewing = False
+                page.update()
+
+        page.run_task(run_preview)
+
+    preview_btn = ft.Button(
+        content=ft.Text("Preview (အသံစမ်းမည်)"),
+        icon=ft.Icons.VOLUME_UP,
+        bgcolor="transparent",
+        color=COLOR_GOLD,
+        style=ft.ButtonStyle(
+            shape=ft.RoundedRectangleBorder(radius=10),
+            side=ft.BorderSide(1, COLOR_GOLD),
+        ),
+        on_click=preview_voice,
     )
 
     settings_card = glass_card(
         ft.Column(
             [
                 ft.Row([ft.Icon(ft.Icons.TUNE, color=COLOR_GOLD, size=22), ft.Text("VOICE SETTINGS", size=14, weight=ft.FontWeight.BOLD, color=COLOR_TEXT)]),
-                ft.Text("အသံရွေးချယ်ပါ", size=12, color=COLOR_TEXT_MUTED),
+                ft.Text("အသံပုံစံ ၁၀ မျိုး ရွေးချယ်ပါ", size=12, color=COLOR_TEXT_MUTED),
                 voice_dropdown,
-                ft.Text("Speed (အမြန်နှုန်း)", size=12, color=COLOR_TEXT_MUTED),
-                rate_slider,
-                ft.Text("Pitch (အသံအနိမ့်အမြင့်)", size=12, color=COLOR_TEXT_MUTED),
-                pitch_slider,
+                ft.Row([preview_btn], alignment=ft.MainAxisAlignment.CENTER),
             ],
-            spacing=10,
+            spacing=15,
         )
     )
 
@@ -289,9 +332,7 @@ def main(page: ft.Page):
             cache_dir = os.path.join(os.getcwd(), "temp_tts")
             os.makedirs(cache_dir, exist_ok=True)
             
-            selected_voice = voice_dropdown.value
-            rate_str = f"{int(rate_slider.value):+d}%"
-            pitch_str = f"{int(pitch_slider.value):+d}Hz"
+            selected_profile = VOICE_PROFILES[voice_dropdown.value]
             
             chunk_files = []
             for i, chunk in enumerate(chunks):
@@ -299,7 +340,12 @@ def main(page: ft.Page):
                 page.update()
                 
                 chunk_file = os.path.join(cache_dir, f"chunk_{i}.mp3")
-                communicate = edge_tts.Communicate(chunk, selected_voice, rate=rate_str, pitch=pitch_str)
+                communicate = edge_tts.Communicate(
+                    chunk, 
+                    selected_profile["voice"], 
+                    rate=selected_profile["rate"], 
+                    pitch=selected_profile["pitch"]
+                )
                 await communicate.save(chunk_file)
                 chunk_files.append(chunk_file)
                 
