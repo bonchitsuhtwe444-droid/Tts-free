@@ -1,10 +1,10 @@
 import flet as ft
-import flet_audio as fta
 import edge_tts
 import asyncio
 import re
 import os
 import shutil
+import webbrowser
 from datetime import datetime
 
 # ==========================================
@@ -86,8 +86,6 @@ def main(page: ft.Page):
     page.theme = ft.Theme(font_family="Padauk")
 
     is_generating = False
-    generated_audio_path = None
-    audio_player = None
 
     # 1. Header
     header = ft.Container(
@@ -226,7 +224,7 @@ def main(page: ft.Page):
 
     # --- Logic ---
     async def generate_tts_process(e):
-        nonlocal is_generating, generated_audio_path, audio_player
+        nonlocal is_generating
         if is_generating: return
         
         user_text = text_input.value
@@ -275,9 +273,8 @@ def main(page: ft.Page):
             final_path = os.path.join(cache_dir, final_filename)
             
             if merge_audio_files(chunk_files, final_path):
-                generated_audio_path = final_path
                 status_text.value = "အသံထုတ်လုပ်မှု ပြီးစီးပါပြီ!"
-                setup_player(final_path, final_filename)
+                setup_player_ui(final_path, final_filename)
             else:
                 raise Exception("ဖိုင်များ ပေါင်းစပ်ရာတွင် အမှားအယွင်းရှိပါသည်။")
 
@@ -289,32 +286,17 @@ def main(page: ft.Page):
             progress_bar.visible = False
             page.update()
 
-    def setup_player(file_path, filename):
-        nonlocal audio_player
-        
-        # ရှိပြီးသား player ရှိရင် ဖျက်မယ်
-        if audio_player:
-            page.overlay.remove(audio_player)
-        
-        # Audio Player အသစ်ဆောက်မယ်
-        audio_player = fta.Audio(src=file_path, autoplay=False, volume=1.0)
-        page.overlay.append(audio_player)
-        
-        play_btn = ft.IconButton(
-            icon=ft.Icons.PLAY_ARROW, 
-            icon_color=COLOR_GOLD,
-            icon_size=40,
-            on_click=lambda e: toggle_play(),
-        )
-        
-        def toggle_play():
-            if audio_player.is_playing():
-                audio_player.pause()
-                play_btn.icon = ft.Icons.PLAY_ARROW 
-            else:
-                audio_player.play()
-                play_btn.icon = ft.Icons.PAUSE 
-            page.update()
+    def setup_player_ui(file_path, filename):
+        # ဖုန်းရဲ့ System ကနေ တိုက်ရိုက် ဖွင့်ပေးမယ့် Function
+        def play_audio(e):
+            try:
+                # Flet ရဲ့ launch_url ကို သုံးပြီး ဖုန်း App Player ကို ခေါ်မယ်
+                page.launch_url(f"file://{file_path}")
+                status_text.value = "အသံဖွင့်နေသည်..."
+                page.update()
+            except Exception as ex:
+                status_text.value = f"ဖွင့်မရပါ: {str(ex)}"
+                page.update()
 
         def save_to_download(e):
             try:
@@ -332,6 +314,14 @@ def main(page: ft.Page):
                 status_text.value = f"သိမ်းဆည်းမှု အမှားအယွင်း: {str(ex)}"
                 page.update()
 
+        play_btn = ft.Button(
+            content=ft.Text("Play Audio"),
+            icon=ft.Icons.PLAY_ARROW,
+            bgcolor=COLOR_GOLD,
+            color="#000000",
+            on_click=play_audio,
+        )
+
         save_btn = ft.Button(
             content=ft.Text("Save to Download"),
             icon=ft.Icons.DOWNLOAD, 
@@ -344,7 +334,7 @@ def main(page: ft.Page):
             ft.Container(
                 content=ft.Column(
                     [
-                        ft.Text("Now Playing", size=14, color=COLOR_TEXT_MUTED),
+                        ft.Text("Generated Audio", size=14, color=COLOR_TEXT_MUTED),
                         ft.Text(filename, size=16, weight=ft.FontWeight.BOLD, color=COLOR_PLATINUM),
                         ft.Row([play_btn, save_btn], alignment=ft.MainAxisAlignment.CENTER, spacing=20),
                     ],
