@@ -104,10 +104,6 @@ def main(page: ft.Page):
     is_generating = False
     is_previewing = False
 
-    # Flet အသစ်အတွက် URL ဖွင့်တဲ့ စနစ်
-    url_launcher = ft.UrlLauncher()
-    page.overlay.append(url_launcher)
-
     def glass_card(content, padding=20):
         return ft.Container(
             content=content,
@@ -129,11 +125,17 @@ def main(page: ft.Page):
 
     def show_qr(e):
         dlg = ft.AlertDialog(
-            title=ft.Text("မုန့်ဖိုးပေးရန်", color=COLOR_GOLD, text_align=ft.TextAlign.CENTER),
-            content=ft.Container(
-                # ဒီနေရာမှာ assets ဖိုဒါထဲက ပုံကို ခေါ်ထားပါတယ်
-                content=ft.Image(src="/kpay_qr.jpg", width=250, height=250, fit=ft.BoxFit.CONTAIN),
-                alignment=ft.Alignment.CENTER,
+            title=ft.Text("မုန့်ဖိုးပေးရန်", color=COLOR_GOLD, text_align=ft.TextAlign.CENTER, weight=ft.FontWeight.BOLD),
+            content=ft.Column(
+                [
+                    # KBZ Pay စာသား ထည့်ထားပါတယ်
+                    ft.Text("KBZ Pay", size=22, weight=ft.FontWeight.W_900, color=COLOR_TEXT),
+                    ft.Container(height=10),
+                    ft.Image(src="assets/kpay_qr.jpg", width=250, height=250, fit=ft.BoxFit.CONTAIN),
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=5,
+                tight=True,
             ),
             actions=[ft.TextButton("ပိတ်မည်", on_click=lambda e: close_dlg(dlg))],
             actions_alignment=ft.MainAxisAlignment.CENTER,
@@ -229,7 +231,6 @@ def main(page: ft.Page):
         content_padding=15,
     )
 
-    # Speed Slider ပြန်ထည့်ထားပါတယ်
     rate_slider = ft.Slider(
         min=-50, max=50, divisions=100, value=0, label="{value}%",
         active_color=COLOR_GOLD, inactive_color="#44FFFFFF",
@@ -260,8 +261,8 @@ def main(page: ft.Page):
                     pitch=selected_profile["pitch"]
                 )
                 await communicate.save(preview_path)
-                # page.launch_url အစား url_launcher.launch_url ကို သုံးထားပါတယ်
-                url_launcher.launch_url(f"file://{preview_path}")
+                
+                ft.UrlLauncher().launch_url(f"file://{preview_path}")
                 status_text.value = "အသံဖွင့်နေသည်..."
             except Exception as ex:
                 status_text.value = f"Error: {str(ex)}"
@@ -388,7 +389,7 @@ def main(page: ft.Page):
     def setup_player_ui(file_path, filename):
         def play_audio(e):
             try:
-                url_launcher.launch_url(f"file://{file_path}")
+                ft.UrlLauncher().launch_url(f"file://{file_path}")
                 status_text.value = "အသံဖွင့်နေသည်..."
                 page.update()
             except Exception as ex:
