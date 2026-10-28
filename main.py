@@ -466,4 +466,4 @@ def main(page: ft.Page):
         player_container,
     )
 
-ft.app(target=main)
+ft.app(main)
