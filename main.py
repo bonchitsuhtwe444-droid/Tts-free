@@ -80,7 +80,6 @@ def main(page: ft.Page):
     page.padding = 20
     page.scroll = ft.ScrollMode.AUTO
     
-    # Flet အသစ်အတွက် Font Setting
     page.fonts = {
         "Padauk": "https://github.com/google/fonts/raw/main/ofl/padauk/Padauk-Regular.ttf"
     }
@@ -104,13 +103,13 @@ def main(page: ft.Page):
                 ft.Container(
                     content=ft.Text("PRO", size=10, weight=ft.FontWeight.BOLD, color="#000000"),
                     bgcolor=COLOR_GOLD,
-                    padding=ft.Padding.symmetric(horizontal=8, vertical=4), # ပြင်ပြီး
+                    padding=ft.Padding.symmetric(horizontal=8, vertical=4),
                     border_radius=4,
                 )
             ],
             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
         ),
-        padding=ft.Padding.only(bottom=20), # ပြင်ပြီး
+        padding=ft.Padding.only(bottom=20),
     )
 
     # 2. Script Editor Card
@@ -213,15 +212,15 @@ def main(page: ft.Page):
     progress_bar = ft.ProgressBar(width=300, color=COLOR_GOLD, bgcolor=COLOR_CARD, visible=False)
     player_container = ft.Column(visible=False, spacing=10)
     
-    generate_btn = ft.ElevatedButton(
-        text="Generate Voice (အသံထုတ်မည်)",
+    # Elevate Button အစား Button ကို သုံးထားပါတယ်
+    generate_btn = ft.Button(
+        content=ft.Text("Generate Voice (အသံထုတ်မည်)", size=16, weight=ft.FontWeight.BOLD),
         icon=ft.Icons.PLAY_CIRCLE_FILLED, 
         bgcolor=COLOR_GOLD,
         color="#000000",
         style=ft.ButtonStyle(
             shape=ft.RoundedRectangleBorder(radius=12),
-            padding=ft.Padding.symmetric(vertical=18, horizontal=30), # ပြင်ပြီး
-            text_style=ft.TextStyle(size=16, weight=ft.FontWeight.BOLD),
+            padding=ft.Padding.symmetric(vertical=18, horizontal=30),
         ),
         width=300,
     )
@@ -331,8 +330,9 @@ def main(page: ft.Page):
                 status_text.value = f"သိမ်းဆည်းမှု အမှားအယွင်း: {str(ex)}"
                 page.update()
 
-        save_btn = ft.ElevatedButton(
-            text="Save to Download",
+        # Button အသစ်ကို သုံးထားပါတယ်
+        save_btn = ft.Button(
+            content=ft.Text("Save to Download"),
             icon=ft.Icons.DOWNLOAD, 
             bgcolor=COLOR_PLATINUM,
             color="#000000",
