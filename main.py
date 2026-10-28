@@ -212,7 +212,6 @@ def main(page: ft.Page):
     progress_bar = ft.ProgressBar(width=300, color=COLOR_GOLD, bgcolor=COLOR_CARD, visible=False)
     player_container = ft.Column(visible=False, spacing=10)
     
-    # Elevate Button အစား Button ကို သုံးထားပါတယ်
     generate_btn = ft.Button(
         content=ft.Text("Generate Voice (အသံထုတ်မည်)", size=16, weight=ft.FontWeight.BOLD),
         icon=ft.Icons.PLAY_CIRCLE_FILLED, 
@@ -292,9 +291,12 @@ def main(page: ft.Page):
 
     def setup_player(file_path, filename):
         nonlocal audio_player
+        
+        # ရှိပြီးသား player ရှိရင် ဖျက်မယ်
         if audio_player:
             page.overlay.remove(audio_player)
         
+        # Audio Player အသစ်ဆောက်မယ်
         audio_player = fta.Audio(src=file_path, autoplay=False, volume=1.0)
         page.overlay.append(audio_player)
         
@@ -330,7 +332,6 @@ def main(page: ft.Page):
                 status_text.value = f"သိမ်းဆည်းမှု အမှားအယွင်း: {str(ex)}"
                 page.update()
 
-        # Button အသစ်ကို သုံးထားပါတယ်
         save_btn = ft.Button(
             content=ft.Text("Save to Download"),
             icon=ft.Icons.DOWNLOAD, 
