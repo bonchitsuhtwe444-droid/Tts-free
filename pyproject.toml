@@ -12,9 +12,9 @@ copyright = "Copyright (c) 2025"
 
 [tool.flet.app]
 path = "."
+assets_dir = "assets"
 
 [tool.flet.android]
-# ခေတ်မီဖုန်းအများစုအတွက်ပဲ Build လုပ်မယ် (Error နည်းသွားမယ်)
 target_arch = ["arm64-v8a"] 
 
 [tool.flet.android.permission]
