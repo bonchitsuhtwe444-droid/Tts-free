@@ -7,7 +7,7 @@ import shutil
 from datetime import datetime
 
 # ==========================================
-# PLATINUM VOICE - 10 VOICES + SPEED SLIDER
+# PLATINUM VOICE - ALL VOICES MERGED
 # ==========================================
 
 GRADIENT_COLORS = ["#1A0B2E", "#2D1B4E", "#0F2027", "#203A43"] 
@@ -20,20 +20,23 @@ GLASS_BG = "#22FFFFFF"
 GLASS_BORDER = "#44FFFFFF" 
 GLASS_INPUT_BG = "#11000000" 
 
+# --- အသံအားလုံး တစ်စုတည်း ပေါင်းစပ်ထားခြင်း (၁၄ မျိုး) ---
 VOICE_PROFILES = {
-    # မိန်းကလေးအသံများ
     "👩 မယ်နှင်း (ပုံမှန်)": {"voice": "my-MM-NilarNeural", "pitch": "+0Hz"},
     "👩 ရွှေစင် (ချိုမြိန်)": {"voice": "my-MM-NilarNeural", "pitch": "+15Hz"},
     "👩 သီတာ (တည်ငြိမ်)": {"voice": "my-MM-NilarNeural", "pitch": "-10Hz"},
     "👩 ချယ်ရီ (စိတ်လှုပ်ရှား)": {"voice": "my-MM-NilarNeural", "pitch": "+5Hz"},
     "👩 အေးမြ (လေးလံ)": {"voice": "my-MM-NilarNeural", "pitch": "-20Hz"},
+    "👩 စုမြတ် (နူးညံ့)": {"voice": "my-MM-NilarNeural", "pitch": "+25Hz"},
+    "👩 ခင်ဝေ (အေးဆေး)": {"voice": "my-MM-NilarNeural", "pitch": "-5Hz"},
     
-    # ယောက်ျားလေးအသံများ
     "👨 သီဟ (ပုံမှန်)": {"voice": "my-MM-ThihaNeural", "pitch": "+0Hz"},
     "👨 ဇော်နိုင် (လေးလံခိုင်မာ)": {"voice": "my-MM-ThihaNeural", "pitch": "-15Hz"},
     "👨 မိုးကျော် (လူငယ်)": {"voice": "my-MM-ThihaNeural", "pitch": "+15Hz"},
-    "👨 ကျော်ဇော (သတင်းဖတ်)": {"voice": "my-MM-ThihaNeural", "pitch": "+0Hz"},
-    "👨 နိုင်ဦး (အမြန်)": {"voice": "my-MM-ThihaNeural", "pitch": "+5Hz"}
+    "👨 ကျော်ဇော (သတင်းဖတ်)": {"voice": "my-MM-ThihaNeural", "pitch": "+10Hz"},
+    "👨 နိုင်ဦး (အမြန်)": {"voice": "my-MM-ThihaNeural", "pitch": "+5Hz"},
+    "👨 မင်းခန့် (စွမ်းအား)": {"voice": "my-MM-ThihaNeural", "pitch": "+25Hz"},
+    "👨 ဇော်ဇော် (အသံဝယ်)": {"voice": "my-MM-ThihaNeural", "pitch": "-25Hz"}
 }
 
 def split_unlimited_text(text: str, max_chunk_size: int = 2000) -> list[str]:
@@ -102,7 +105,6 @@ def main(page: ft.Page):
     )
 
     is_generating = False
-    is_previewing = False
 
     def glass_card(content, padding=20):
         return ft.Container(
@@ -128,9 +130,9 @@ def main(page: ft.Page):
             title=ft.Text("မုန့်ဖိုးပေးရန်", color=COLOR_GOLD, text_align=ft.TextAlign.CENTER, weight=ft.FontWeight.BOLD),
             content=ft.Column(
                 [
-                    # KBZ Pay စာသား ထည့်ထားပါတယ်
                     ft.Text("KBZ Pay", size=22, weight=ft.FontWeight.W_900, color=COLOR_TEXT),
                     ft.Container(height=10),
+                    # assets ဖိုဒါထဲက ပုံကို တိုက်ရိုက်ခေါ်ထားပါတယ်
                     ft.Image(src="assets/kpay_qr.jpg", width=250, height=250, fit=ft.BoxFit.CONTAIN),
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -219,7 +221,7 @@ def main(page: ft.Page):
         )
     )
 
-    # 3. Voice Settings
+    # 3. Voice Settings (Preview လုံးဝ မပါတော့ပါ)
     voice_dropdown = ft.Dropdown(
         options=[ft.dropdown.Option(key=k, text=k) for k in VOICE_PROFILES.keys()],
         value=list(VOICE_PROFILES.keys())[0],
@@ -236,61 +238,12 @@ def main(page: ft.Page):
         active_color=COLOR_GOLD, inactive_color="#44FFFFFF",
     )
 
-    def preview_voice(e):
-        nonlocal is_previewing
-        if is_previewing: return
-        is_previewing = True
-        status_text.value = "အသံစမ်းသပ်နေသည်..."
-        page.update()
-
-        selected_profile = VOICE_PROFILES[voice_dropdown.value]
-        rate_str = f"{int(rate_slider.value):+d}%"
-        
-        async def run_preview():
-            try:
-                cache_dir = os.path.join(os.getcwd(), "temp_tts")
-                os.makedirs(cache_dir, exist_ok=True)
-                preview_path = os.path.join(cache_dir, "preview.mp3")
-                
-                preview_text = "မင်္ဂလာပါ၊ ကျွန်တော်တို့ Platinum Voice မှ ကြိုဆိုပါတယ်။ ဒါက အသံစမ်းသပ်နေတာ ဖြစ်ပါတယ်။"
-                
-                communicate = edge_tts.Communicate(
-                    preview_text, 
-                    selected_profile["voice"], 
-                    rate=rate_str, 
-                    pitch=selected_profile["pitch"]
-                )
-                await communicate.save(preview_path)
-                
-                ft.UrlLauncher().launch_url(f"file://{preview_path}")
-                status_text.value = "အသံဖွင့်နေသည်..."
-            except Exception as ex:
-                status_text.value = f"Error: {str(ex)}"
-            finally:
-                is_previewing = False
-                page.update()
-
-        page.run_task(run_preview)
-
-    preview_btn = ft.Button(
-        content=ft.Text("Preview (အသံစမ်းမည်)"),
-        icon=ft.Icons.VOLUME_UP,
-        bgcolor="transparent",
-        color=COLOR_GOLD,
-        style=ft.ButtonStyle(
-            shape=ft.RoundedRectangleBorder(radius=10),
-            side=ft.BorderSide(1, COLOR_GOLD),
-        ),
-        on_click=preview_voice,
-    )
-
     settings_card = glass_card(
         ft.Column(
             [
                 ft.Row([ft.Icon(ft.Icons.TUNE, color=COLOR_GOLD, size=22), ft.Text("VOICE SETTINGS", size=14, weight=ft.FontWeight.BOLD, color=COLOR_TEXT)]),
-                ft.Text("အသံပုံစံ ၁၀ မျိုး ရွေးချယ်ပါ", size=12, color=COLOR_TEXT_MUTED),
+                ft.Text("အသံပုံစံ ၁၄ မျိုး ရွေးချယ်ပါ", size=12, color=COLOR_TEXT_MUTED),
                 voice_dropdown,
-                ft.Row([preview_btn], alignment=ft.MainAxisAlignment.CENTER),
                 ft.Text("Speed (အမြန်နှုန်း)", size=12, color=COLOR_TEXT_MUTED),
                 rate_slider,
             ],
