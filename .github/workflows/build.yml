@@ -22,13 +22,12 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # flet-cli ကို သီးသန့် install လုပ်ပါ
       - name: Install Flet CLI
         run: pip install flet-cli
 
-      # flet build command ကို တိုက်ရိုက် run ပါ
+      # --yes ကို ဒီနေရာမှာ ထည့်ထားပါတယ် (Flutter ကို အလိုအလျောက် install လုပ်ခွင့်ပြုရန်)
       - name: Build APK
-        run: flet build apk --verbose
+        run: flet build apk --verbose --yes
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
