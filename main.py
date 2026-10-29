@@ -10,7 +10,7 @@ import time
 from datetime import datetime
 
 # ==========================================
-# PLATINUM VOICE - IMPORT & CLEANUP EDITION
+# PLATINUM VOICE - IMPORT & CLEANUP FIXED
 # ==========================================
 
 GRADIENT_COLORS = ["#1A0B2E", "#2D1B4E", "#0F2027", "#203A43"] 
@@ -333,48 +333,50 @@ def setup_main_ui(page: ft.Page):
         page.update()
 
     # ==========================================
-    # 1. File Import စနစ်
+    # 1. File Import စနစ် (Async ပြင်ဆင်ပြီး)
     # ==========================================
     file_picker = ft.FilePicker()
     page.services.append(file_picker)
 
-    def import_file(e):
-        file_picker.pick_files(
-            allow_multiple=False,
-            file_type=ft.FilePickerFileType.CUSTOM,
-            allowed_extensions=["txt"],
-        )
-
-    async def on_file_picked(e: ft.FilePickerResultEvent):
-        if e.files and len(e.files) > 0:
-            filepath = e.files[0].path
-            try:
+    async def import_file(e):
+        try:
+            files = await file_picker.pick_files(
+                allow_multiple=False,
+                file_type=ft.FilePickerFileType.CUSTOM,
+                allowed_extensions=["txt"]
+            )
+            if files and len(files) > 0:
+                filepath = files[0].path
                 with open(filepath, "r", encoding="utf-8") as f:
                     content = f.read()
                 text_input.value = content
                 update_char_count()
                 status_text.value = "ဖိုင်ကို ဖတ်ယူပြီးပါပြီ။"
                 page.update()
-            except Exception as ex:
-                status_text.value = f"ဖိုင်ဖတ်မရပါ: {str(ex)}"
-                page.update()
-                
-    file_picker.on_result = on_file_picked
+        except Exception as ex:
+            status_text.value = f"ဖိုင်ဖတ်မရပါ: {str(ex)}"
+            page.update()
 
     # ==========================================
-    # 2. Text Cleanup စနစ်
+    # 2. Text Cleanup စနစ် (ပိုမိုအားကောင်းအောင် ပြင်ဆင်ပြီး)
     # ==========================================
     def clean_text(e):
         text = text_input.value
         if not text:
+            status_text.value = "စာသားမရှိပါ။"
+            page.update()
             return
-        # မလိုအပ်တဲ့ Space တွေ၊ Enter တွေကို ရှင်းမယ်
-        text = re.sub(r' +', ' ', text) # Space အများကြီးကို တစ်ခုတည်းဖြစ်အောင်
-        text = re.sub(r'\n+', '\n', text) # Enter အများကြီးကို တစ်ခုတည်းဖြစ်အောင်
-        text = text.strip() # အစနဲ့ အဆုံးက အကွက်လွတ်တွေ ဖျက်မယ်
-        text_input.value = text
+        
+        # မလိုအပ်တဲ့ Space, Enter နဲ့ သင်္ကေတတွေကို ရှင်းလင်းခြင်း
+        cleaned = text.replace('\r\n', '\n')  # Windows Enter ကို ရှင်းမယ်
+        cleaned = re.sub(r'[ \t]+', ' ', cleaned) # Space နဲ့ Tab အများကြီးကို တစ်ခုတည်းဖြစ်အောင်
+        cleaned = re.sub(r'\n\s*\n', '\n', cleaned) # အလွတ်လိုင်းတွေကို ဖျက်မယ်
+        cleaned = cleaned.strip() # အစနဲ့ အဆုံးက အကွက်လွတ်တွေကို ဖျက်မယ်
+        
+        text_input.value = cleaned
         update_char_count()
         status_text.value = "စာသားများကို သန့်ရှင်းရေးလုပ်ပြီးပါပြီ။"
+        text_input.update() # UI ကို ချက်ချင်း Update ဖြစ်စေရန်
         page.update()
 
     editor_card = glass_card(
@@ -384,7 +386,6 @@ def setup_main_ui(page: ft.Page):
                     [
                         ft.Icon(ft.Icons.EDIT_NOTE, color=COLOR_GOLD, size=22),
                         ft.Text("SCRIPT EDITOR", size=14, weight=ft.FontWeight.BOLD, color=COLOR_TEXT),
-                        # Import နဲ့ Cleanup ခလုတ်တွေ ထည့်ထားပါတယ်
                         ft.Row([
                             ft.IconButton(
                                 icon=ft.Icons.FOLDER_OPEN, 
