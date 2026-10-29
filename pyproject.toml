@@ -14,6 +14,8 @@ org = "com.platinumvoice"
 product = "Platinum Voice"
 company = "Platinum Voice"
 copyright = "Copyright (c) 2025"
+# App Icon ကို ဒီနေရာမှာ သတ်မှတ်ထားပါတယ်
+icon = "logo.png" 
 
 [tool.flet.app]
 path = "."
