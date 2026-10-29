@@ -25,9 +25,9 @@ jobs:
       - name: Install Flet CLI
         run: pip install flet-cli
 
-      # ဒီအောက်က စာကြောင်းမှာ --include-packages flet_audio ကို ထည့်ထားပါတယ်
+      # --include-packages ကို ဖျက်ထားပါတယ်
       - name: Build APK
-        run: flet build apk --verbose --yes --include-packages flet_audio
+        run: flet build apk --verbose --yes
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
