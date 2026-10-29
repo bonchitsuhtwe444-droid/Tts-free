@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 
 # ==========================================
-# PLATINUM VOICE - FIXED AUDIO FOCUS
+# PLATINUM VOICE - SINGLE AUDIO INSTANCE
 # ==========================================
 
 GRADIENT_COLORS = ["#1A0B2E", "#2D1B4E", "#0F2027", "#203A43"] 
@@ -141,7 +141,10 @@ def setup_main_ui(page: ft.Page):
     is_generating = False
     is_previewing = False
     prefs = ft.SharedPreferences()
-    current_audio_player = None
+    
+    # App တစ်ခုလုံးအတွက် Player တစ်ခုတည်း ဖန်တီးမယ် (Single Instance)
+    global_audio = fta.Audio(autoplay=False)
+    page.services.append(global_audio)
 
     async def load_data_async():
         try:
@@ -379,7 +382,7 @@ def setup_main_ui(page: ft.Page):
     )
 
     def preview_voice(e):
-        nonlocal is_previewing, current_audio_player
+        nonlocal is_previewing, global_audio
         if is_previewing: return
         is_previewing = True
         status_text.value = "အသံစမ်းသပ်နေသည်..."
@@ -390,7 +393,6 @@ def setup_main_ui(page: ft.Page):
         pitch_str = f"{int(pitch_slider.value):+d}Hz"
         
         async def run_preview():
-            nonlocal current_audio_player
             try:
                 cache_dir = os.path.join(os.getcwd(), "temp_tts")
                 os.makedirs(cache_dir, exist_ok=True)
@@ -403,18 +405,9 @@ def setup_main_ui(page: ft.Page):
                 communicate = edge_tts.Communicate(preview_text, selected_voice, rate=rate_str, pitch=pitch_str)
                 await communicate.save(preview_path)
                 
-                # အရင် Player ရှိရင် အရင်ပိတ်ပြီး နည်းနည်းစောင့်မယ် (Audio Focus လွတ်အောင်)
-                if current_audio_player:
-                    try:
-                        current_audio_player.pause()
-                        page.services.remove(current_audio_player)
-                        page.update()
-                        await asyncio.sleep(0.3) # စက္ကန့် ၀.၃ စောင့်မယ်
-                    except:
-                        pass
-
-                current_audio_player = fta.Audio(src=preview_path, autoplay=True)
-                page.services.append(current_audio_player)
+                # တစ်ခုတည်းသော Player ရဲ့ ဖိုင်လမ်းကြောင်းကို ပြောင်းပြီး ဖွင့်ခိုင်းမယ်
+                global_audio.src = preview_path
+                global_audio.play()
                 page.update()
                 
                 status_text.value = "အသံဖွင့်နေသည်..."
@@ -661,7 +654,7 @@ def setup_main_ui(page: ft.Page):
             page.update()
 
     def setup_player_ui(file_path, filename):
-        nonlocal current_audio_player
+        nonlocal global_audio
         default_name = filename.replace(".mp3", "")
         file_name_input = ft.TextField(
             value=default_name,
@@ -675,21 +668,11 @@ def setup_main_ui(page: ft.Page):
         )
 
         def play_audio(e):
-            nonlocal current_audio_player
+            nonlocal global_audio
             try:
-                if current_audio_player:
-                    try:
-                        current_audio_player.pause()
-                        page.services.remove(current_audio_player)
-                        page.update()
-                        # play_audio မှာလည်း နည်းနည်းစောင့်မယ်
-                        import time
-                        time.sleep(0.2)
-                    except:
-                        pass
-
-                current_audio_player = fta.Audio(src=file_path, autoplay=True)
-                page.services.append(current_audio_player)
+                # တစ်ခုတည်းသော Player ကို အသုံးပြုမယ်
+                global_audio.src = file_path
+                global_audio.play()
                 page.update()
                 status_text.value = "အသံဖွင့်နေသည်..."
                 page.update()
