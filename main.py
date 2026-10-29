@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 
 # ==========================================
-# PLATINUM VOICE - BACKGROUND AUDIO
+# PLATINUM VOICE - MULTI-LANG & PRONUNCIATION
 # ==========================================
 
 GRADIENT_COLORS = ["#1A0B2E", "#2D1B4E", "#0F2027", "#203A43"] 
@@ -21,6 +21,38 @@ COLOR_ERROR = "#FF5252"
 GLASS_BG = "#22FFFFFF" 
 GLASS_BORDER = "#44FFFFFF" 
 GLASS_INPUT_BG = "#11000000" 
+
+# --- ကမ္ဘာ့ဘာသာစကားအမျိုးမျိုးမှ အသံများ ---
+VOICE_PROFILES = {
+    # မြန်မာ
+    "🇲🇲 နီလာ (မြန်မာ - မိန်းကလေး)": "my-MM-NilarNeural",
+    "🇲🇲 သီဟ (မြန်မာ - ယောက်ျားလေး)": "my-MM-ThihaNeural",
+    # အင်္ဂလိပ် (အမေရိကန်)
+    "🇺🇸 အယ်ရီယာ (အမေရိကန် - မိန်းကလေး)": "en-US-AriaNeural",
+    "🇺🇸 ဂိုင်း (အမေရိကန် - ယောက်ျားလေး)": "en-US-GuyNeural",
+    "🇺🇸 ဂျယ်နီ (အမေရိကန် - မိန်းကလေး)": "en-US-JennyNeural",
+    # အင်္ဂလိပ် (ဗြိတိန်)
+    "🇬🇧 ဆိုနီယာ (ဗြိတိန် - မိန်းကလေး)": "en-GB-SoniaNeural",
+    "🇬🇧 ရိုင်ယန် (ဗြိတိန် - ယောက်ျားလေး)": "en-GB-RyanNeural",
+    # ဂျပန်
+    "🇯🇵 နာနာမိ (ဂျပန် - မိန်းကလေး)": "ja-JP-NanamiNeural",
+    "🇯🇵 ကေးတာ (ဂျပန် - ယောက်ျားလေး)": "ja-JP-KeitaNeural",
+    # ထိုင်း
+    "🇹🇭 ပရီဝါဒီ (ထိုင်း - မိန်းကလေး)": "th-TH-PremwadeeNeural",
+    "🇹🇭 နီဝတ် (ထိုင်း - ယောက်ျားလေး)": "th-TH-NiwatNeural",
+    # တရုတ်
+    "🇨🇳 ရှောရှောင် (တရုတ် - မိန်းကလေး)": "zh-CN-XiaoxiaoNeural",
+    "🇨🇳 ယွန်ရှီ (တရုတ် - ယောက်ျားလေး)": "zh-CN-YunxiNeural",
+    # ကိုရီးယား
+    "🇰🇷 ဆန်းဟီ (ကိုရီးယား - မိန်းကလေး)": "ko-KR-SunHiNeural",
+    "🇰🇷 အင်ဂျွန် (ကိုရီးယား - ယောက်ျားလေး)": "ko-KR-InJoonNeural",
+    # ပြင်သစ်
+    "🇫🇷 ဒင်နစ် (ပြင်သစ် - မိန်းကလေး)": "fr-FR-DeniseNeural",
+    # ဂျာမန်
+    "🇩🇪 ကာတရင် (ဂျာမန် - မိန်းကလေး)": "de-DE-KatjaNeural",
+    # စပိန်
+    "🇪🇸 အယ်လ်ဗာ (စပိန် - မိန်းကလေး)": "es-ES-ElviraNeural",
+}
 
 def split_unlimited_text(text: str, max_chunk_size: int = 2000) -> list[str]:
     if not text or not text.strip(): return []
@@ -116,41 +148,42 @@ def main(page: ft.Page):
 
 def setup_main_ui(page: ft.Page):
     is_generating = False
-    is_previewing = False
-
     prefs = ft.SharedPreferences()
 
-    async def load_presets_async():
+    # --- ဒေတာများ Load လုပ်ခြင်း ---
+    async def load_data_async():
         try:
             presets_str = await prefs.get("my_presets")
-            if presets_str:
-                return json.loads(presets_str)
+            pronun_str = await prefs.get("my_pronunciations")
+            
+            p_data = json.loads(presets_str) if presets_str else {}
+            pr_data = json.loads(pronun_str) if pronun_str else {}
+            return p_data, pr_data
         except:
-            pass
-        return {}
-
-    async def save_presets_to_storage_async(presets_dict):
-        try:
-            await prefs.set("my_presets", json.dumps(presets_dict))
-        except Exception as ex:
-            print(f"Save Preset Error: {ex}")
+            return {}, {}
 
     presets_data = {}
+    pronunciations_data = {}
 
-    def load_presets():
-        nonlocal presets_data
-        future = page.run_task(load_presets_async)
+    def load_data():
+        nonlocal presets_data, pronunciations_data
+        future = page.run_task(load_data_async)
         def on_done(f):
-            nonlocal presets_data
+            nonlocal presets_data, pronunciations_data
             try:
-                presets_data = f.result()
+                p, pr = f.result()
+                presets_data = p
+                pronunciations_data = pr
                 update_presets_ui()
             except Exception:
                 pass
         future.add_done_callback(on_done)
 
     def save_presets_to_storage(presets_dict):
-        page.run_task(save_presets_to_storage_async, presets_dict)
+        page.run_task(lambda: prefs.set("my_presets", json.dumps(presets_dict)))
+
+    def save_pronuns_to_storage(pronun_dict):
+        page.run_task(lambda: prefs.set("my_pronunciations", json.dumps(pronun_dict)))
 
     def glass_card(content, padding=20):
         return ft.Container(
@@ -193,12 +226,78 @@ def setup_main_ui(page: ft.Page):
         dlg.open = True
         page.update()
 
+    # --- Pronunciation Dictionary Dialog ---
+    def show_pronun_dialog(e):
+        word_input = ft.TextField(hint_text="မူရက်စာလုံး (ဥပမာ - AI)", bgcolor=GLASS_INPUT_BG, color=COLOR_TEXT, text_size=14)
+        replace_input = ft.TextField(hint_text="အစားထိုးမည့် အသံထွက် (ဥပမာ - အေ-အိုင်)", bgcolor=GLASS_INPUT_BG, color=COLOR_TEXT, text_size=14)
+        list_container = ft.Column(spacing=10)
+
+        def update_list():
+            list_container.controls.clear()
+            if not pronunciations_data:
+                list_container.controls.append(ft.Text("ပြင်ဆင်ထားသော စာလုံး မရှိပါ။", size=12, color=COLOR_TEXT_MUTED, italic=True))
+            else:
+                for k, v in pronunciations_data.items():
+                    def make_del(key=k):
+                        return lambda e: delete_pronun(key)
+                    list_container.controls.append(
+                        ft.Row([
+                            ft.Text(f"{k} ➔ {v}", color=COLOR_GOLD, expand=True, size=13),
+                            ft.IconButton(ft.Icons.DELETE, icon_color=COLOR_ERROR, icon_size=18, on_click=make_del())
+                        ])
+                    )
+            page.update()
+
+        def add_pronun(e):
+            w = word_input.value.strip()
+            r = replace_input.value.strip()
+            if w and r:
+                pronunciations_data[w] = r
+                save_pronuns_to_storage(pronunciations_data)
+                word_input.value = ""
+                replace_input.value = ""
+                update_list()
+
+        def delete_pronun(key):
+            if key in pronunciations_data:
+                del pronunciations_data[key]
+                save_pronuns_to_storage(pronunciations_data)
+                update_list()
+
+        add_btn = ft.Button("ထည့်မည်", bgcolor=COLOR_GOLD, color="#000000", on_click=add_pronun)
+
+        update_list()
+
+        dlg = ft.AlertDialog(
+            title=ft.Text("အသံထွက် ပြင်ဆင်ရန်", color=COLOR_GOLD),
+            content=ft.Container(
+                content=ft.Column([
+                    ft.Text("မြန်မာစာသားထဲမှာ အင်္ဂလိပ်စာလုံးတွေ ပါလာရင် အသံထွက်မှားတတ်ပါတယ်။ ဒီနေရာမှာ ကိုယ်လိုချင်တဲ့ အသံထွက်နဲ့ လဲလှယ်ထားနိုင်ပါတယ်။", size=12, color=COLOR_TEXT_MUTED),
+                    ft.Row([word_input, replace_input], spacing=10),
+                    ft.Row([add_btn], alignment=ft.MainAxisAlignment.END),
+                    ft.Divider(color=GLASS_BORDER),
+                    ft.Text("ပြင်ဆင်ထားသော စာလုံးများ", size=14, weight=ft.FontWeight.BOLD, color=COLOR_TEXT),
+                    list_container
+                ], spacing=15),
+                width=350, height=400
+            ),
+            actions=[ft.TextButton("ပိတ်မည်", on_click=lambda e: close_dlg(dlg))],
+            bgcolor="#2D1B4E",
+            shape=ft.RoundedRectangleBorder(radius=20),
+        )
+        page.overlay.append(dlg)
+        dlg.open = True
+        page.update()
+
+    # ==========================================
+    # UI များ စတင်တည်ဆောက်ခြင်း
+    # ==========================================
     header = ft.Row(
         [
             ft.Column(
                 [
                     ft.Text("PLATINUM VOICE", size=26, weight=ft.FontWeight.W_900, color=COLOR_TEXT),
-                    ft.Text("UNLIMITED TTS", size=12, weight=ft.FontWeight.BOLD, color=COLOR_GOLD),
+                    ft.Text("MULTI-LANGUAGE TTS", size=12, weight=ft.FontWeight.BOLD, color=COLOR_GOLD),
                 ],
                 spacing=2,
             ),
@@ -264,11 +363,9 @@ def setup_main_ui(page: ft.Page):
         )
     )
 
+    # --- Voice Settings ---
     voice_dropdown = ft.Dropdown(
-        options=[
-            ft.dropdown.Option(key="my-MM-NilarNeural", text="👩 နီလာ (Nilar)"),
-            ft.dropdown.Option(key="my-MM-ThihaNeural", text="👨 သီဟ (Thiha)")
-        ],
+        options=[ft.dropdown.Option(key=v, text=k) for k, v in VOICE_PROFILES.items()],
         value="my-MM-NilarNeural",
         bgcolor=GLASS_INPUT_BG,
         border_color=GLASS_BORDER,
@@ -288,55 +385,19 @@ def setup_main_ui(page: ft.Page):
         active_color=COLOR_GOLD, inactive_color="#44FFFFFF",
     )
 
-    def preview_voice(e):
-        nonlocal is_previewing
-        if is_previewing: return
-        is_previewing = True
-        status_text.value = "အသံစမ်းသပ်နေသည်..."
-        page.update()
-
-        selected_voice = voice_dropdown.value
-        rate_str = f"{int(rate_slider.value):+d}%"
-        pitch_str = f"{int(pitch_slider.value):+d}Hz"
-        
-        async def run_preview():
-            try:
-                cache_dir = os.path.join(os.getcwd(), "temp_tts")
-                os.makedirs(cache_dir, exist_ok=True)
-                preview_path = os.path.join(cache_dir, "preview.mp3")
-                
-                preview_text = "မင်္ဂလာပါ၊ ကျွန်တော်တို့ Platinum Voice မှ ကြိုဆိုပါတယ်။ ဒါက အသံစမ်းသပ်နေတာ ဖြစ်ပါတယ်။"
-                
-                communicate = edge_tts.Communicate(preview_text, selected_voice, rate=rate_str, pitch=pitch_str)
-                await communicate.save(preview_path)
-                
-                # page.services ကို သုံးပြီး နောက်ကွယ်ကနေ ဖွင့်ခိုင်းလိုက်ပါတယ်
-                page.services.clear()
-                preview_player = fta.Audio(src=preview_path, autoplay=True)
-                page.services.append(preview_player)
-                page.update()
-                
-                status_text.value = "အသံဖွင့်နေသည်..."
-            except Exception as ex:
-                status_text.value = f"Error: {str(ex)}"
-            finally:
-                is_previewing = False
-                page.update()
-                
-        page.run_task(run_preview)
-
-    preview_btn = ft.Button(
-        content=ft.Text("Preview"),
-        icon=ft.Icons.VOLUME_UP,
+    pronun_btn = ft.Button(
+        content=ft.Text("အသံထွက် ပြင်ဆင်ရန်"),
+        icon=ft.Icons.RECORD_VOICE_OVER,
         bgcolor="transparent",
         color=COLOR_GOLD,
         style=ft.ButtonStyle(
             shape=ft.RoundedRectangleBorder(radius=10),
             side=ft.BorderSide(1, COLOR_GOLD),
         ),
-        on_click=preview_voice,
+        on_click=show_pronun_dialog,
     )
 
+    # --- Presets ---
     preset_name_input = ft.TextField(
         hint_text="သတ်မှတ်ချက် အမည်ပေးပါ (ဥပမာ - ရွှေစင်)",
         bgcolor=GLASS_INPUT_BG,
@@ -418,19 +479,16 @@ def setup_main_ui(page: ft.Page):
         ft.Column(
             [
                 ft.Row([ft.Icon(ft.Icons.TUNE, color=COLOR_GOLD, size=22), ft.Text("VOICE SETTINGS", size=14, weight=ft.FontWeight.BOLD, color=COLOR_TEXT)]),
-                ft.Text("အသံရွေးချယ်ပါ", size=12, color=COLOR_TEXT_MUTED),
+                ft.Text("ဘာသာစကား ရွေးချယ်ပါ", size=12, color=COLOR_TEXT_MUTED),
                 voice_dropdown,
-                
-                ft.Row(
-                    [preview_btn], 
-                    alignment=ft.MainAxisAlignment.CENTER
-                ),
                 
                 ft.Text("Speed (အမြန်နှုန်း)", size=12, color=COLOR_TEXT_MUTED),
                 rate_slider,
                 
                 ft.Text("Pitch (အသံအနိမ့်အမြင့်)", size=12, color=COLOR_TEXT_MUTED),
                 pitch_slider,
+
+                ft.Row([pronun_btn], alignment=ft.MainAxisAlignment.CENTER),
 
                 ft.Divider(color=GLASS_BORDER),
                 ft.Text("သတ်မှတ်ချက် သိမ်းဆည်းရန်", size=12, color=COLOR_TEXT_MUTED),
@@ -480,6 +538,11 @@ def setup_main_ui(page: ft.Page):
             page.update()
             return
 
+        # Pronunciation အရင် အစားထိုးမယ်
+        processed_text = user_text
+        for word, replacement in pronunciations_data.items():
+            processed_text = processed_text.replace(word, replacement)
+
         is_generating = True
         generate_btn.opacity = 0.5 
         generate_btn.disabled = True
@@ -489,7 +552,7 @@ def setup_main_ui(page: ft.Page):
         page.update()
 
         try:
-            chunks = split_unlimited_text(user_text, max_chunk_size=2000)
+            chunks = split_unlimited_text(processed_text, max_chunk_size=2000)
             total_chunks = len(chunks)
             if total_chunks == 0: raise ValueError("စာသားမရှိပါ။")
 
@@ -555,7 +618,6 @@ def setup_main_ui(page: ft.Page):
 
         def play_audio(e):
             try:
-                # page.services ကို သုံးပြီး နောက်ကွယ်ကနေ ဖွင့်ခိုင်းလိုက်ပါတယ်
                 page.services.clear()
                 player = fta.Audio(src=file_path, autoplay=True)
                 page.services.append(player)
@@ -661,7 +723,7 @@ def setup_main_ui(page: ft.Page):
         ft.Container(height=20),
     )
 
-    load_presets()
+    load_data()
 
 if __name__ == "__main__":
     ft.run(main)
