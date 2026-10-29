@@ -8,7 +8,7 @@ import json
 from datetime import datetime
 
 # ==========================================
-# PLATINUM VOICE - PRESETS (SharedPreferences)
+# PLATINUM VOICE - SPLASH & FIXED AUDIO
 # ==========================================
 
 GRADIENT_COLORS = ["#1A0B2E", "#2D1B4E", "#0F2027", "#203A43"] 
@@ -86,9 +86,44 @@ def main(page: ft.Page):
         colors=GRADIENT_COLORS,
     )
 
-    is_generating = False
+    # ==========================================
+    # 1. LOADING (SPLASH) SCREEN
+    # ==========================================
+    splash_view = ft.Container(
+        content=ft.Column(
+            [
+                ft.ProgressRing(color=COLOR_GOLD, width=60, height=60, stroke_width=4),
+                ft.Container(height=20),
+                ft.Text("PLATINUM VOICE", size=32, weight=ft.FontWeight.BOLD, color=COLOR_GOLD),
+                ft.Text("UNLIMITED TTS", size=14, color=COLOR_TEXT_MUTED),
+                ft.Container(height=100),
+                ft.Text("Developed By Dexter Syntax", size=12, color=COLOR_TEXT_MUTED, italic=True),
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        ),
+        alignment=ft.Alignment.CENTER,
+        expand=True,
+    )
+    
+    page.add(splash_view)
 
-    # --- Presets သိမ်းဆည်းမှု စနစ် (SharedPreferences ကို သုံးထားပါတယ်) ---
+    # စက္ကန့် ၂ စက္ကန့် စောင့်ပြီးမှ Main App ကို ခေါ်မယ်
+    async def load_main_app():
+        await asyncio.sleep(2.0)
+        page.clean()
+        setup_main_ui(page)
+
+    page.run_task(load_main_app)
+
+
+# ==========================================
+# 2. MAIN APP UI
+# ==========================================
+def setup_main_ui(page: ft.Page):
+    is_generating = False
+    is_previewing = False
+
     prefs = ft.SharedPreferences()
 
     async def load_presets_async():
@@ -262,7 +297,57 @@ def main(page: ft.Page):
         active_color=COLOR_GOLD, inactive_color="#44FFFFFF",
     )
 
-    # --- Preset စနစ် UI နှင့် Logic ---
+    # --- Preview စနစ် (Fixed) ---
+    def preview_voice(e):
+        nonlocal is_previewing
+        if is_previewing: return
+        is_previewing = True
+        status_text.value = "အသံစမ်းသပ်နေသည်..."
+        page.update()
+
+        selected_voice = voice_dropdown.value
+        rate_str = f"{int(rate_slider.value):+d}%"
+        pitch_str = f"{int(pitch_slider.value):+d}Hz"
+        
+        async def run_preview():
+            try:
+                cache_dir = os.path.join(os.getcwd(), "temp_tts")
+                os.makedirs(cache_dir, exist_ok=True)
+                preview_path = os.path.join(cache_dir, "preview.mp3")
+                
+                preview_text = "မင်္ဂလာပါ၊ ကျွန်တော်တို့ Platinum Voice မှ ကြိုဆိုပါတယ်။ ဒါက အသံစမ်းသပ်နေတာ ဖြစ်ပါတယ်။"
+                
+                communicate = edge_tts.Communicate(preview_text, selected_voice, rate=rate_str, pitch=pitch_str)
+                await communicate.save(preview_path)
+                
+                # Flet Native Audio (App ထဲမှာတင် ဖွင့်မယ်)
+                page.overlay.clear()
+                preview_player = ft.Audio(src=preview_path, autoplay=True)
+                page.overlay.append(preview_player)
+                page.update()
+                
+                status_text.value = "အသံဖွင့်နေသည်..."
+            except Exception as ex:
+                status_text.value = f"Error: {str(ex)}"
+            finally:
+                is_previewing = False
+                page.update()
+                
+        page.run_task(run_preview)
+
+    preview_btn = ft.Button(
+        content=ft.Text("Preview"),
+        icon=ft.Icons.VOLUME_UP,
+        bgcolor="transparent",
+        color=COLOR_GOLD,
+        style=ft.ButtonStyle(
+            shape=ft.RoundedRectangleBorder(radius=10),
+            side=ft.BorderSide(1, COLOR_GOLD),
+        ),
+        on_click=preview_voice,
+    )
+
+    # --- Preset စနစ် ---
     preset_name_input = ft.TextField(
         hint_text="သတ်မှတ်ချက် အမည်ပေးပါ (ဥပမာ - ရွှေစင်)",
         bgcolor=GLASS_INPUT_BG,
@@ -346,6 +431,11 @@ def main(page: ft.Page):
                 ft.Row([ft.Icon(ft.Icons.TUNE, color=COLOR_GOLD, size=22), ft.Text("VOICE SETTINGS", size=14, weight=ft.FontWeight.BOLD, color=COLOR_TEXT)]),
                 ft.Text("အသံရွေးချယ်ပါ", size=12, color=COLOR_TEXT_MUTED),
                 voice_dropdown,
+                
+                ft.Row(
+                    [preview_btn], 
+                    alignment=ft.MainAxisAlignment.CENTER
+                ),
                 
                 ft.Text("Speed (အမြန်နှုန်း)", size=12, color=COLOR_TEXT_MUTED),
                 rate_slider,
@@ -476,7 +566,11 @@ def main(page: ft.Page):
 
         def play_audio(e):
             try:
-                ft.UrlLauncher().launch_url(f"file://{file_path}")
+                # App ထဲက Native Player နဲ့ ဖွင့်မယ်
+                page.overlay.clear()
+                player = ft.Audio(src=file_path, autoplay=True)
+                page.overlay.append(player)
+                page.update()
                 status_text.value = "အသံဖွင့်နေသည်..."
                 page.update()
             except Exception as ex:
@@ -573,9 +667,11 @@ def main(page: ft.Page):
         player_container,
         ft.Container(height=20),
         ft.Row([donate_btn], alignment=ft.MainAxisAlignment.CENTER),
+        ft.Container(height=20),
+        ft.Text("Developed By Dexter Syntax", size=12, color=COLOR_TEXT_MUTED, italic=True, text_align=ft.TextAlign.CENTER),
+        ft.Container(height=20),
     )
 
-    # App စဖွင့်တာနဲ့ Preset စာရင်းကို Load လုပ်ပါ
     load_presets()
 
 if __name__ == "__main__":
