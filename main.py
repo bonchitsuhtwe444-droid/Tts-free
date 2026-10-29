@@ -7,11 +7,10 @@ import os
 import shutil
 import json
 import time
-import uuid
 from datetime import datetime
 
 # ==========================================
-# PLATINUM VOICE - FINAL FIX (SINGLE AUDIO)
+# PLATINUM VOICE - IN-APP AUDIO (FIXED)
 # ==========================================
 
 GRADIENT_COLORS = ["#1A0B2E", "#2D1B4E", "#0F2027", "#203A43"] 
@@ -44,9 +43,6 @@ VOICE_PROFILES = {
     "🇩🇪 ကာတရင် (ဂျာမန် - မိန်းကလေး)": "de-DE-KatjaNeural",
     "🇪🇸 အယ်လ်ဗာ (စပိန် - မိန်းကလေး)": "es-ES-ElviraNeural",
 }
-
-# ကမ္ဘာလုံးဆိုင်ရာ Player တစ်ခုတည်း သတ်မှတ်မယ်
-global_audio = None
 
 def split_unlimited_text(text: str, max_chunk_size: int = 2000) -> list[str]:
     if not text or not text.strip(): return []
@@ -97,8 +93,6 @@ def merge_audio_files(file_paths: list[str], output_path: str) -> bool:
         return False
 
 def main(page: ft.Page):
-    global global_audio
-    
     page.title = "Platinum Voice"
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 20
@@ -114,10 +108,6 @@ def main(page: ft.Page):
         end=ft.Alignment.BOTTOM_RIGHT,
         colors=GRADIENT_COLORS,
     )
-    
-    # Audio Player ကို တစ်ခါတည်း ဖန်တီးပြီး Services ထဲ ထည့်ထားမယ်
-    global_audio = fta.Audio(autoplay=False)
-    page.services.append(global_audio)
 
     splash_view = ft.Container(
         content=ft.Column(
@@ -149,8 +139,6 @@ def main(page: ft.Page):
 
 
 def setup_main_ui(page: ft.Page):
-    global global_audio
-    
     is_generating = False
     is_previewing = False
     prefs = ft.SharedPreferences()
@@ -402,24 +390,26 @@ def setup_main_ui(page: ft.Page):
         pitch_str = f"{int(pitch_slider.value):+d}Hz"
         
         async def run_preview():
-            global global_audio
             try:
                 cache_dir = os.path.join(os.getcwd(), "temp_tts")
                 os.makedirs(cache_dir, exist_ok=True)
                 
-                # ဖိုင်နာမည်ကို အသစ်တစ်ခုတည်း (UUID နဲ့) ပေးတာမို့ Cache မခံပါဘူး
-                unique_id = uuid.uuid4().hex
-                preview_path = os.path.join(cache_dir, f"preview_{unique_id}.mp3")
+                # ဖိုင်နာမည်ကို အသစ်တစ်ခုတည်း ပေးတာမို့ Cache မခံပါဘူး
+                timestamp = datetime.now().strftime("%H%M%S")
+                preview_path = os.path.join(cache_dir, f"preview_{timestamp}.mp3")
                 
                 preview_text = "မင်္ဂလာပါ၊ ကျွန်တော်တို့ Platinum Voice မှ ကြိုဆိုပါတယ်။ ဒါက အသံစမ်းသပ်နေတာ ဖြစ်ပါတယ်။"
                 
                 communicate = edge_tts.Communicate(preview_text, selected_voice, rate=rate_str, pitch=pitch_str)
                 await communicate.save(preview_path)
                 
-                # Player ရဲ့ လမ်းကြောင်းကို ပြောင်းပြီး ဖွင့်မယ်
-                global_audio.src = preview_path
-                global_audio.update()
-                global_audio.play()
+                # အရေးကြီးဆုံး - အရင် Player တွေအားလုံးကို ရှင်းထုတ်မယ်
+                page.services.clear()
+                page.update()
+                
+                # Player အသစ်ဖွင့်မယ်
+                player = fta.Audio(src=preview_path, autoplay=True)
+                page.services.append(player)
                 page.update()
                 
                 status_text.value = "အသံဖွင့်နေသည်..."
@@ -679,11 +669,14 @@ def setup_main_ui(page: ft.Page):
         )
 
         def play_audio(e):
-            global global_audio
             try:
-                global_audio.src = file_path
-                global_audio.update()
-                global_audio.play()
+                # အရေးကြီးဆုံး - အရင် Player တွေအားလုံးကို ရှင်းထုတ်မယ်
+                page.services.clear()
+                page.update()
+                
+                # Player အသစ်ဖွင့်မယ်
+                player = fta.Audio(src=file_path, autoplay=True)
+                page.services.append(player)
                 page.update()
                 status_text.value = "အသံဖွင့်နေသည်..."
                 page.update()
