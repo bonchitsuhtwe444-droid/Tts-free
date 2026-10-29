@@ -1,4 +1,5 @@
 import flet as ft
+import flet_audio as fta
 import edge_tts
 import asyncio
 import re
@@ -8,7 +9,7 @@ import json
 from datetime import datetime
 
 # ==========================================
-# PLATINUM VOICE - SYSTEM PLAYER (NO RED ERROR)
+# PLATINUM VOICE - BACKGROUND AUDIO
 # ==========================================
 
 GRADIENT_COLORS = ["#1A0B2E", "#2D1B4E", "#0F2027", "#203A43"] 
@@ -300,22 +301,21 @@ def setup_main_ui(page: ft.Page):
         
         async def run_preview():
             try:
-                # Preview ဖိုင်ကို ဖုန်းရဲ့ Download Folder ထဲကို တိုက်ရိုက် သိမ်းမယ် (System Player အတွက်)
-                download_dir = "/storage/emulated/0/Download"
-                if not os.path.exists(download_dir):
-                    download_dir = os.path.expanduser("~/Downloads")
-                    if not os.path.exists(download_dir):
-                        os.makedirs(download_dir, exist_ok=True)
-                
-                preview_path = os.path.join(download_dir, "Platinum_Preview.mp3")
+                cache_dir = os.path.join(os.getcwd(), "temp_tts")
+                os.makedirs(cache_dir, exist_ok=True)
+                preview_path = os.path.join(cache_dir, "preview.mp3")
                 
                 preview_text = "မင်္ဂလာပါ၊ ကျွန်တော်တို့ Platinum Voice မှ ကြိုဆိုပါတယ်။ ဒါက အသံစမ်းသပ်နေတာ ဖြစ်ပါတယ်။"
                 
                 communicate = edge_tts.Communicate(preview_text, selected_voice, rate=rate_str, pitch=pitch_str)
                 await communicate.save(preview_path)
                 
-                # ဖုန်းရဲ့ မူရင်း Player နဲ့ ဖွင့်မယ် (Download ထဲမှာရှိလို့ Error တက်မှာ မဟုတ်ပါ)
-                ft.UrlLauncher().launch_url(f"file://{preview_path}")
+                # page.services ကို သုံးပြီး နောက်ကွယ်ကနေ ဖွင့်ခိုင်းလိုက်ပါတယ်
+                page.services.clear()
+                preview_player = fta.Audio(src=preview_path, autoplay=True)
+                page.services.append(preview_player)
+                page.update()
+                
                 status_text.value = "အသံဖွင့်နေသည်..."
             except Exception as ex:
                 status_text.value = f"Error: {str(ex)}"
@@ -555,17 +555,11 @@ def setup_main_ui(page: ft.Page):
 
         def play_audio(e):
             try:
-                # ဖိုင်ကို ယာယီ Download Folder ထဲကို ကူးပြီးမှ ဖွင့်မယ်
-                download_dir = "/storage/emulated/0/Download"
-                if not os.path.exists(download_dir):
-                    download_dir = os.path.expanduser("~/Downloads")
-                    if not os.path.exists(download_dir):
-                        os.makedirs(download_dir, exist_ok=True)
-                
-                temp_play_path = os.path.join(download_dir, "Platinum_Play_Temp.mp3")
-                shutil.copy2(file_path, temp_play_path)
-                
-                ft.UrlLauncher().launch_url(f"file://{temp_play_path}")
+                # page.services ကို သုံးပြီး နောက်ကွယ်ကနေ ဖွင့်ခိုင်းလိုက်ပါတယ်
+                page.services.clear()
+                player = fta.Audio(src=file_path, autoplay=True)
+                page.services.append(player)
+                page.update()
                 status_text.value = "အသံဖွင့်နေသည်..."
                 page.update()
             except Exception as ex:
