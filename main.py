@@ -1,4 +1,5 @@
 import flet as ft
+import flet_audio as fta
 import edge_tts
 import asyncio
 import re
@@ -6,10 +7,11 @@ import os
 import shutil
 import json
 import time
+import uuid
 from datetime import datetime
 
 # ==========================================
-# PLATINUM VOICE - SYSTEM PLAYER FIXED
+# PLATINUM VOICE - FINAL FIX (SINGLE AUDIO)
 # ==========================================
 
 GRADIENT_COLORS = ["#1A0B2E", "#2D1B4E", "#0F2027", "#203A43"] 
@@ -42,6 +44,9 @@ VOICE_PROFILES = {
     "🇩🇪 ကာတရင် (ဂျာမန် - မိန်းကလေး)": "de-DE-KatjaNeural",
     "🇪🇸 အယ်လ်ဗာ (စပိန် - မိန်းကလေး)": "es-ES-ElviraNeural",
 }
+
+# ကမ္ဘာလုံးဆိုင်ရာ Player တစ်ခုတည်း သတ်မှတ်မယ်
+global_audio = None
 
 def split_unlimited_text(text: str, max_chunk_size: int = 2000) -> list[str]:
     if not text or not text.strip(): return []
@@ -92,6 +97,8 @@ def merge_audio_files(file_paths: list[str], output_path: str) -> bool:
         return False
 
 def main(page: ft.Page):
+    global global_audio
+    
     page.title = "Platinum Voice"
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 20
@@ -107,6 +114,10 @@ def main(page: ft.Page):
         end=ft.Alignment.BOTTOM_RIGHT,
         colors=GRADIENT_COLORS,
     )
+    
+    # Audio Player ကို တစ်ခါတည်း ဖန်တီးပြီး Services ထဲ ထည့်ထားမယ်
+    global_audio = fta.Audio(autoplay=False)
+    page.services.append(global_audio)
 
     splash_view = ft.Container(
         content=ft.Column(
@@ -138,6 +149,8 @@ def main(page: ft.Page):
 
 
 def setup_main_ui(page: ft.Page):
+    global global_audio
+    
     is_generating = False
     is_previewing = False
     prefs = ft.SharedPreferences()
@@ -389,25 +402,26 @@ def setup_main_ui(page: ft.Page):
         pitch_str = f"{int(pitch_slider.value):+d}Hz"
         
         async def run_preview():
+            global global_audio
             try:
-                # System Player အတွက် ဖုန်းရဲ့ Download ဖိုဒါထဲကို သိမ်းမယ်
-                download_dir = "/storage/emulated/0/Download"
-                if not os.path.exists(download_dir):
-                    download_dir = os.path.expanduser("~/Downloads")
-                    if not os.path.exists(download_dir):
-                        os.makedirs(download_dir, exist_ok=True)
+                cache_dir = os.path.join(os.getcwd(), "temp_tts")
+                os.makedirs(cache_dir, exist_ok=True)
                 
-                # ဖိုင်နာမည်မှာ Timestamp ထည့်ထားတဲ့အတွက် Cache မခံရတော့ပါဘူး
-                unique_id = int(time.time())
-                preview_path = os.path.join(download_dir, f"Preview_{unique_id}.mp3")
+                # ဖိုင်နာမည်ကို အသစ်တစ်ခုတည်း (UUID နဲ့) ပေးတာမို့ Cache မခံပါဘူး
+                unique_id = uuid.uuid4().hex
+                preview_path = os.path.join(cache_dir, f"preview_{unique_id}.mp3")
                 
                 preview_text = "မင်္ဂလာပါ၊ ကျွန်တော်တို့ Platinum Voice မှ ကြိုဆိုပါတယ်။ ဒါက အသံစမ်းသပ်နေတာ ဖြစ်ပါတယ်။"
                 
                 communicate = edge_tts.Communicate(preview_text, selected_voice, rate=rate_str, pitch=pitch_str)
                 await communicate.save(preview_path)
                 
-                # ဖုန်းရဲ့ မူရင်း Player ကို ခေါ်မယ်
-                ft.UrlLauncher().launch_url(f"file://{preview_path}")
+                # Player ရဲ့ လမ်းကြောင်းကို ပြောင်းပြီး ဖွင့်မယ်
+                global_audio.src = preview_path
+                global_audio.update()
+                global_audio.play()
+                page.update()
+                
                 status_text.value = "အသံဖွင့်နေသည်..."
             except Exception as ex:
                 status_text.value = f"Error: {str(ex)}"
@@ -665,19 +679,12 @@ def setup_main_ui(page: ft.Page):
         )
 
         def play_audio(e):
+            global global_audio
             try:
-                download_dir = "/storage/emulated/0/Download"
-                if not os.path.exists(download_dir):
-                    download_dir = os.path.expanduser("~/Downloads")
-                    if not os.path.exists(download_dir):
-                        os.makedirs(download_dir, exist_ok=True)
-                
-                # ဖိုင်နာမည် အသစ်တစ်ခု ပေးပြီး ကူးမယ် (ထပ်ခါထပ်ခါ ဖွင့်လို့ရအောင်)
-                unique_id = int(time.time())
-                temp_play_path = os.path.join(download_dir, f"Play_{unique_id}.mp3")
-                shutil.copy2(file_path, temp_play_path)
-                
-                ft.UrlLauncher().launch_url(f"file://{temp_play_path}")
+                global_audio.src = file_path
+                global_audio.update()
+                global_audio.play()
+                page.update()
                 status_text.value = "အသံဖွင့်နေသည်..."
                 page.update()
             except Exception as ex:
