@@ -7,10 +7,11 @@ import os
 import shutil
 import json
 import time
+import base64
 from datetime import datetime
 
 # ==========================================
-# PLATINUM VOICE - IMPORT & CLEANUP FIXED
+# PLATINUM VOICE - BASE64 AUDIO (NO CACHE)
 # ==========================================
 
 GRADIENT_COLORS = ["#1A0B2E", "#2D1B4E", "#0F2027", "#203A43"] 
@@ -142,6 +143,10 @@ def setup_main_ui(page: ft.Page):
     is_generating = False
     is_previewing = False
     prefs = ft.SharedPreferences()
+    
+    # App ထဲမှာ အသံဖွင့်ဖို့ Player တစ်ခုတည်း ဖန်တီးမယ်
+    global_audio = fta.Audio(autoplay=False)
+    page.services.append(global_audio)
 
     async def load_data_async():
         try:
@@ -332,9 +337,6 @@ def setup_main_ui(page: ft.Page):
         char_count_text.value = f"{count} characters"
         page.update()
 
-    # ==========================================
-    # 1. File Import စနစ် (Async ပြင်ဆင်ပြီး)
-    # ==========================================
     file_picker = ft.FilePicker()
     page.services.append(file_picker)
 
@@ -357,9 +359,6 @@ def setup_main_ui(page: ft.Page):
             status_text.value = f"ဖိုင်ဖတ်မရပါ: {str(ex)}"
             page.update()
 
-    # ==========================================
-    # 2. Text Cleanup စနစ် (ပိုမိုအားကောင်းအောင် ပြင်ဆင်ပြီး)
-    # ==========================================
     def clean_text(e):
         text = text_input.value
         if not text:
@@ -367,16 +366,15 @@ def setup_main_ui(page: ft.Page):
             page.update()
             return
         
-        # မလိုအပ်တဲ့ Space, Enter နဲ့ သင်္ကေတတွေကို ရှင်းလင်းခြင်း
-        cleaned = text.replace('\r\n', '\n')  # Windows Enter ကို ရှင်းမယ်
-        cleaned = re.sub(r'[ \t]+', ' ', cleaned) # Space နဲ့ Tab အများကြီးကို တစ်ခုတည်းဖြစ်အောင်
-        cleaned = re.sub(r'\n\s*\n', '\n', cleaned) # အလွတ်လိုင်းတွေကို ဖျက်မယ်
-        cleaned = cleaned.strip() # အစနဲ့ အဆုံးက အကွက်လွတ်တွေကို ဖျက်မယ်
+        cleaned = text.replace('\r\n', '\n')
+        cleaned = re.sub(r'[ \t]+', ' ', cleaned)
+        cleaned = re.sub(r'\n\s*\n', '\n', cleaned)
+        cleaned = cleaned.strip()
         
         text_input.value = cleaned
         update_char_count()
         status_text.value = "စာသားများကို သန့်ရှင်းရေးလုပ်ပြီးပါပြီ။"
-        text_input.update() # UI ကို ချက်ချင်း Update ဖြစ်စေရန်
+        text_input.update()
         page.update()
 
     editor_card = glass_card(
@@ -387,27 +385,9 @@ def setup_main_ui(page: ft.Page):
                         ft.Icon(ft.Icons.EDIT_NOTE, color=COLOR_GOLD, size=22),
                         ft.Text("SCRIPT EDITOR", size=14, weight=ft.FontWeight.BOLD, color=COLOR_TEXT),
                         ft.Row([
-                            ft.IconButton(
-                                icon=ft.Icons.FOLDER_OPEN, 
-                                icon_color=COLOR_GOLD,
-                                icon_size=22,
-                                tooltip="Import .txt File",
-                                on_click=import_file,
-                            ),
-                            ft.IconButton(
-                                icon=ft.Icons.CLEANING_SERVICES, 
-                                icon_color=COLOR_GOLD,
-                                icon_size=22,
-                                tooltip="Clean Text",
-                                on_click=clean_text,
-                            ),
-                            ft.IconButton(
-                                icon=ft.Icons.DELETE_SWEEP, 
-                                icon_color=COLOR_ERROR,
-                                icon_size=22,
-                                tooltip="Clear All",
-                                on_click=clear_text,
-                            ),
+                            ft.IconButton(ft.Icons.FOLDER_OPEN, icon_color=COLOR_GOLD, icon_size=22, tooltip="Import .txt File", on_click=import_file),
+                            ft.IconButton(ft.Icons.CLEANING_SERVICES, icon_color=COLOR_GOLD, icon_size=22, tooltip="Clean Text", on_click=clean_text),
+                            ft.IconButton(ft.Icons.DELETE_SWEEP, icon_color=COLOR_ERROR, icon_size=22, tooltip="Clear All", on_click=clear_text),
                         ], spacing=0)
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
@@ -465,11 +445,16 @@ def setup_main_ui(page: ft.Page):
                 communicate = edge_tts.Communicate(preview_text, selected_voice, rate=rate_str, pitch=pitch_str)
                 await communicate.save(preview_path)
                 
-                page.services.clear()
-                page.update()
+                # Base64 အဖြစ် ပြောင်းလဲခြင်း (File Permission ကျော်လွှားရန်)
+                with open(preview_path, "rb") as f:
+                    audio_bytes = f.read()
+                b64_str = base64.b64encode(audio_bytes).decode('utf-8')
+                data_uri = f"data:audio/mp3;base64,{b64_str}"
                 
-                player = fta.Audio(src=preview_path, autoplay=True)
-                page.services.append(player)
+                # Player ကို Update လုပ်ပြီး ဖွင့်မယ်
+                global_audio.src = data_uri
+                global_audio.update()
+                global_audio.play()
                 page.update()
                 
                 status_text.value = "အသံဖွင့်နေသည်..."
@@ -730,11 +715,15 @@ def setup_main_ui(page: ft.Page):
 
         def play_audio(e):
             try:
-                page.services.clear()
-                page.update()
+                # ဖိုင်ကို Base64 အဖြစ် ပြောင်းပြီး ဖွင့်မယ်
+                with open(file_path, "rb") as f:
+                    audio_bytes = f.read()
+                b64_str = base64.b64encode(audio_bytes).decode('utf-8')
+                data_uri = f"data:audio/mp3;base64,{b64_str}"
                 
-                player = fta.Audio(src=file_path, autoplay=True)
-                page.services.append(player)
+                global_audio.src = data_uri
+                global_audio.update()
+                global_audio.play()
                 page.update()
                 status_text.value = "အသံဖွင့်နေသည်..."
                 page.update()
