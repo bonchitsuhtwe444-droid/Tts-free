@@ -25,9 +25,9 @@ jobs:
       - name: Install Flet CLI
         run: pip install flet-cli
 
-      # --yes ကို ဒီနေရာမှာ ထည့်ထားပါတယ် (Flutter ကို အလိုအလျောက် install လုပ်ခွင့်ပြုရန်)
+      # ဒီအောက်က စာကြောင်းမှာ --include-packages flet_audio ကို ထည့်ထားပါတယ်
       - name: Build APK
-        run: flet build apk --verbose --yes
+        run: flet build apk --verbose --yes --include-packages flet_audio
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
