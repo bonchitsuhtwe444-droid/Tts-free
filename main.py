@@ -1,16 +1,16 @@
 import flet as ft
+import flet_audio as fta
 import edge_tts
 import asyncio
 import re
 import os
 import shutil
 import json
-import time
-import base64
+import uuid
 from datetime import datetime
 
 # ==========================================
-# PLATINUM VOICE - WEBVIEW AUDIO PLAYER
+# PLATINUM VOICE - IN-APP AUDIO (FIXED FINAL)
 # ==========================================
 
 GRADIENT_COLORS = ["#1A0B2E", "#2D1B4E", "#0F2027", "#203A43"] 
@@ -142,6 +142,11 @@ def setup_main_ui(page: ft.Page):
     is_generating = False
     is_previewing = False
     prefs = ft.SharedPreferences()
+    page.services.append(prefs) # Service ကို သေချာထည့်မယ်
+
+    # App တစ်ခုလုံးအတွက် Audio Player တစ်ခုတည်း (အသေထားမယ်)
+    audio_player = fta.Audio(autoplay=False)
+    page.overlay.append(audio_player)
 
     async def load_data_async():
         try:
@@ -351,8 +356,8 @@ def setup_main_ui(page: ft.Page):
                 status_text.value = "ဖိုင်ကို ဖတ်ယူပြီးပါပြီ။"
                 page.update()
         except Exception as ex:
-            status_text.value = f"ဖိုင်ဖတ်မရပါ: {str(ex)}"
-            page.update()
+                status_text.value = f"ဖိုင်ဖတ်မရပါ: {str(ex)}"
+                page.update()
 
     def clean_text(e):
         text = text_input.value
@@ -416,32 +421,6 @@ def setup_main_ui(page: ft.Page):
         active_color=COLOR_GOLD, inactive_color="#44FFFFFF",
     )
 
-    # WebView ကို သိမ်းထားမယ့် Variable
-    audio_webview = ft.WebView(expand=True)
-    player_visible = False
-
-    def play_audio_html(b64_str):
-        # HTML5 Audio Player ကို တည်ဆောက်မယ်
-        html_content = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <style>
-                body {{ background-color: #1A1D24; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }}
-                audio {{ width: 90%; }}
-            </style>
-        </head>
-        <body>
-            <audio controls autoplay>
-                <source src="data:audio/mp3;base64,{b64_str}" type="audio/mp3">
-                သင့်ဖုန်းက အသံကို မဖွင့်နိုင်ပါဘူး။
-            </audio>
-        </body>
-        </html>
-        """
-        audio_webview.html = html_content
-        audio_webview.update()
-
     def preview_voice(e):
         nonlocal is_previewing
         if is_previewing: return
@@ -458,19 +437,21 @@ def setup_main_ui(page: ft.Page):
                 cache_dir = os.path.join(os.getcwd(), "temp_tts")
                 os.makedirs(cache_dir, exist_ok=True)
                 
-                timestamp = datetime.now().strftime("%H%M%S")
-                preview_path = os.path.join(cache_dir, f"preview_{timestamp}.mp3")
+                # ဖိုင်နာမည်ကို အသစ်တစ်ခုတည်း (UUID) ပေးတာမို့ Cache မခံပါဘူး
+                unique_id = uuid.uuid4().hex
+                preview_path = os.path.join(cache_dir, f"preview_{unique_id}.mp3")
                 
                 preview_text = "မင်္ဂလာပါ၊ ကျွန်တော်တို့ Platinum Voice မှ ကြိုဆိုပါတယ်။ ဒါက အသံစမ်းသပ်နေတာ ဖြစ်ပါတယ်။"
                 
                 communicate = edge_tts.Communicate(preview_text, selected_voice, rate=rate_str, pitch=pitch_str)
                 await communicate.save(preview_path)
                 
-                # Base64 ပြောင်းပြီး HTML Player ဆီ ပို့မယ်
-                with open(preview_path, "rb") as f:
-                    b64_str = base64.b64encode(f.read()).decode('utf-8')
+                # တစ်ခုတည်းသော Player ကို အသုံးပြုမယ်
+                audio_player.src = preview_path
+                audio_player.update()
+                audio_player.play()
+                page.update()
                 
-                play_audio_html(b64_str)
                 status_text.value = "အသံဖွင့်နေသည်..."
             except Exception as ex:
                 status_text.value = f"Error: {str(ex)}"
@@ -623,8 +604,6 @@ def setup_main_ui(page: ft.Page):
 
     status_text = ft.Text("", size=14, color=COLOR_GOLD, text_align=ft.TextAlign.CENTER)
     progress_bar = ft.ProgressBar(width=350, color=COLOR_GOLD, bgcolor=GLASS_INPUT_BG, visible=False, border_radius=10)
-    
-    # Player Container (WebView ပါဝင်မယ်)
     player_container = ft.Column(visible=False, spacing=10)
     
     generate_btn = ft.Container(
@@ -697,8 +676,8 @@ def setup_main_ui(page: ft.Page):
             status_text.value = "အသံဖိုင်များကို ပေါင်းစပ်နေသည်..."
             page.update()
             
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            final_filename = f"Platinum_TTS_{timestamp}.mp3"
+            unique_id = uuid.uuid4().hex
+            final_filename = f"Platinum_TTS_{unique_id}.mp3"
             final_path = os.path.join(cache_dir, final_filename)
             
             if merge_audio_files(chunk_files, final_path):
@@ -731,10 +710,11 @@ def setup_main_ui(page: ft.Page):
 
         def play_audio(e):
             try:
-                with open(file_path, "rb") as f:
-                    b64_str = base64.b64encode(f.read()).decode('utf-8')
-                
-                play_audio_html(b64_str)
+                # တစ်ခုတည်းသော Player ကို အသုံးပြုမယ်
+                audio_player.src = file_path
+                audio_player.update()
+                audio_player.play()
+                page.update()
                 status_text.value = "အသံဖွင့်နေသည်..."
                 page.update()
             except Exception as ex:
@@ -800,13 +780,6 @@ def setup_main_ui(page: ft.Page):
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     spacing=15,
                 )
-            ),
-            # WebView Player ကို ဒီနေရာမှာ ထည့်ထားပါတယ်
-            ft.Container(
-                content=audio_webview,
-                height=80, # Player အမြင့်
-                border_radius=10,
-                clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
             )
         ]
         player_container.visible = True
