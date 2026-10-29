@@ -4,7 +4,8 @@ version = "1.0.0"
 description = "Unlimited Burmese TTS App"
 requires-python = ">=3.9"
 dependencies = [
-    "flet==1.0.5",
+    "flet",
+    "flet-audio",
     "edge-tts",
 ]
 
