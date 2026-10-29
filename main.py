@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 
 # ==========================================
-# PLATINUM VOICE - FIXED STORAGE & UI
+# PLATINUM VOICE - FINAL VERSION WITH LOGO
 # ==========================================
 
 GRADIENT_COLORS = ["#1A0B2E", "#2D1B4E", "#0F2027", "#203A43"] 
@@ -108,13 +108,19 @@ def main(page: ft.Page):
         colors=GRADIENT_COLORS,
     )
 
+    # ==========================================
+    # 1. LOADING (SPLASH) SCREEN (Logo ပါဝင်သည်)
+    # ==========================================
     splash_view = ft.Container(
         content=ft.Column(
             [
-                ft.ProgressRing(color=COLOR_GOLD, width=60, height=60, stroke_width=4),
+                # သင့်ရဲ့ Logo ပုံလေး
+                ft.Image(src="logo.png", width=150, height=150),
                 ft.Container(height=20),
                 ft.Text("PLATINUM VOICE", size=32, weight=ft.FontWeight.BOLD, color=COLOR_GOLD),
                 ft.Text("MULTI-LANGUAGE TTS", size=14, color=COLOR_TEXT_MUTED),
+                ft.Container(height=50),
+                ft.ProgressRing(color=COLOR_GOLD, width=40, height=40, stroke_width=4),
                 ft.Container(height=100),
                 ft.Text("Developed By Dexter Syntax", size=12, color=COLOR_TEXT_MUTED, italic=True),
             ],
@@ -128,7 +134,7 @@ def main(page: ft.Page):
     page.add(splash_view)
 
     async def load_main_app():
-        await asyncio.sleep(2.0)
+        await asyncio.sleep(2.5) # စက္ကန့် ၂.၅ လောက် Loading ပြမယ်
         page.clean()
         setup_main_ui(page)
 
@@ -169,7 +175,6 @@ def setup_main_ui(page: ft.Page):
                 pass
         future.add_done_callback(on_done)
 
-    # ဒီနေရာမှာ Error တက်တာပါ။ async function ကို သေချာအောင် ပြင်ထားပါတယ်။
     def save_presets_to_storage(presets_dict):
         async def _save():
             await prefs.set("my_presets", json.dumps(presets_dict))
