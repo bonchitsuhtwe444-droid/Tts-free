@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 
 # ==========================================
-# PLATINUM VOICE - SPLASH & FIXED AUDIO
+# PLATINUM VOICE - NATIVE FLET AUDIO
 # ==========================================
 
 GRADIENT_COLORS = ["#1A0B2E", "#2D1B4E", "#0F2027", "#203A43"] 
@@ -316,8 +316,8 @@ def setup_main_ui(page: ft.Page):
                 communicate = edge_tts.Communicate(preview_text, selected_voice, rate=rate_str, pitch=pitch_str)
                 await communicate.save(preview_path)
                 
+                # Flet Native Audio ကို သုံးထားပါတယ်
                 page.overlay.clear()
-                # fta.Audio ကို သုံးထားပါတယ်
                 preview_player = fta.Audio(src=preview_path, autoplay=True)
                 page.overlay.append(preview_player)
                 page.update()
@@ -561,8 +561,8 @@ def setup_main_ui(page: ft.Page):
 
         def play_audio(e):
             try:
+                # Flet Native Audio ကို သုံးထားပါတယ်
                 page.overlay.clear()
-                # fta.Audio ကို သုံးထားပါတယ်
                 player = fta.Audio(src=file_path, autoplay=True)
                 page.overlay.append(player)
                 page.update()
