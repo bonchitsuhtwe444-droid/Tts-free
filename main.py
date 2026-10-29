@@ -1,4 +1,5 @@
 import flet as ft
+import flet_audio as fta
 import edge_tts
 import asyncio
 import re
@@ -108,7 +109,6 @@ def main(page: ft.Page):
     
     page.add(splash_view)
 
-    # စက္ကန့် ၂ စက္ကန့် စောင့်ပြီးမှ Main App ကို ခေါ်မယ်
     async def load_main_app():
         await asyncio.sleep(2.0)
         page.clean()
@@ -199,7 +199,6 @@ def setup_main_ui(page: ft.Page):
         dlg.open = True
         page.update()
 
-    # 1. Header
     header = ft.Row(
         [
             ft.Column(
@@ -220,7 +219,6 @@ def setup_main_ui(page: ft.Page):
         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
     )
 
-    # 2. Script Editor
     text_input = ft.TextField(
         multiline=True,
         min_lines=8,
@@ -272,7 +270,6 @@ def setup_main_ui(page: ft.Page):
         )
     )
 
-    # 3. Voice Settings
     voice_dropdown = ft.Dropdown(
         options=[
             ft.dropdown.Option(key="my-MM-NilarNeural", text="👩 နီလာ (Nilar)"),
@@ -297,7 +294,6 @@ def setup_main_ui(page: ft.Page):
         active_color=COLOR_GOLD, inactive_color="#44FFFFFF",
     )
 
-    # --- Preview စနစ် (Fixed) ---
     def preview_voice(e):
         nonlocal is_previewing
         if is_previewing: return
@@ -320,9 +316,9 @@ def setup_main_ui(page: ft.Page):
                 communicate = edge_tts.Communicate(preview_text, selected_voice, rate=rate_str, pitch=pitch_str)
                 await communicate.save(preview_path)
                 
-                # Flet Native Audio (App ထဲမှာတင် ဖွင့်မယ်)
                 page.overlay.clear()
-                preview_player = ft.Audio(src=preview_path, autoplay=True)
+                # fta.Audio ကို သုံးထားပါတယ်
+                preview_player = fta.Audio(src=preview_path, autoplay=True)
                 page.overlay.append(preview_player)
                 page.update()
                 
@@ -347,7 +343,6 @@ def setup_main_ui(page: ft.Page):
         on_click=preview_voice,
     )
 
-    # --- Preset စနစ် ---
     preset_name_input = ft.TextField(
         hint_text="သတ်မှတ်ချက် အမည်ပေးပါ (ဥပမာ - ရွှေစင်)",
         bgcolor=GLASS_INPUT_BG,
@@ -566,9 +561,9 @@ def setup_main_ui(page: ft.Page):
 
         def play_audio(e):
             try:
-                # App ထဲက Native Player နဲ့ ဖွင့်မယ်
                 page.overlay.clear()
-                player = ft.Audio(src=file_path, autoplay=True)
+                # fta.Audio ကို သုံးထားပါတယ်
+                player = fta.Audio(src=file_path, autoplay=True)
                 page.overlay.append(player)
                 page.update()
                 status_text.value = "အသံဖွင့်နေသည်..."
