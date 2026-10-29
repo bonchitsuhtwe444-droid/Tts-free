@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 
 # ==========================================
-# PLATINUM VOICE - FINAL VERSION WITH LOGO
+# PLATINUM VOICE - FIXED AUDIO FOCUS
 # ==========================================
 
 GRADIENT_COLORS = ["#1A0B2E", "#2D1B4E", "#0F2027", "#203A43"] 
@@ -108,13 +108,9 @@ def main(page: ft.Page):
         colors=GRADIENT_COLORS,
     )
 
-    # ==========================================
-    # 1. LOADING (SPLASH) SCREEN (Logo ပါဝင်သည်)
-    # ==========================================
     splash_view = ft.Container(
         content=ft.Column(
             [
-                # သင့်ရဲ့ Logo ပုံလေး
                 ft.Image(src="logo.png", width=150, height=150),
                 ft.Container(height=20),
                 ft.Text("PLATINUM VOICE", size=32, weight=ft.FontWeight.BOLD, color=COLOR_GOLD),
@@ -134,7 +130,7 @@ def main(page: ft.Page):
     page.add(splash_view)
 
     async def load_main_app():
-        await asyncio.sleep(2.5) # စက္ကန့် ၂.၅ လောက် Loading ပြမယ်
+        await asyncio.sleep(2.5)
         page.clean()
         setup_main_ui(page)
 
@@ -407,10 +403,13 @@ def setup_main_ui(page: ft.Page):
                 communicate = edge_tts.Communicate(preview_text, selected_voice, rate=rate_str, pitch=pitch_str)
                 await communicate.save(preview_path)
                 
+                # အရင် Player ရှိရင် အရင်ပိတ်ပြီး နည်းနည်းစောင့်မယ် (Audio Focus လွတ်အောင်)
                 if current_audio_player:
                     try:
                         current_audio_player.pause()
                         page.services.remove(current_audio_player)
+                        page.update()
+                        await asyncio.sleep(0.3) # စက္ကန့် ၀.၃ စောင့်မယ်
                     except:
                         pass
 
@@ -682,6 +681,10 @@ def setup_main_ui(page: ft.Page):
                     try:
                         current_audio_player.pause()
                         page.services.remove(current_audio_player)
+                        page.update()
+                        # play_audio မှာလည်း နည်းနည်းစောင့်မယ်
+                        import time
+                        time.sleep(0.2)
                     except:
                         pass
 
