@@ -7,11 +7,13 @@ import os
 import shutil
 import json
 import time
-import base64
+import threading
+import http.server
+import socketserver
 from datetime import datetime
 
 # ==========================================
-# PLATINUM VOICE - BASE64 AUDIO (NO CACHE)
+# PLATINUM VOICE - LOCAL HTTP SERVER AUDIO
 # ==========================================
 
 GRADIENT_COLORS = ["#1A0B2E", "#2D1B4E", "#0F2027", "#203A43"] 
@@ -44,6 +46,28 @@ VOICE_PROFILES = {
     "🇩🇪 ကာတရင် (ဂျာမန် - မိန်းကလေး)": "de-DE-KatjaNeural",
     "🇪🇸 အယ်လ်ဗာ (စပိန် - မိန်းကလေး)": "es-ES-ElviraNeural",
 }
+
+# ==========================================
+# Local HTTP Server Setup
+# ==========================================
+CACHE_DIR = os.path.join(os.getcwd(), "temp_tts")
+os.makedirs(CACHE_DIR, exist_ok=True)
+PORT = 8765
+
+class QuietHandler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=CACHE_DIR, **kwargs)
+    def log_message(self, format, *args):
+        pass # Log တွေ မထွက်အောင် ပိတ်ထားမယ်
+
+def start_server():
+    with socketserver.TCPServer(("127.0.0.1", PORT), QuietHandler) as httpd:
+        httpd.serve_forever()
+
+# App စဖွင့်တာနဲ့ Server ကို နောက်ကွယ်ကနေ စတင်မယ်
+threading.Thread(target=start_server, daemon=True).start()
+
+# ==========================================
 
 def split_unlimited_text(text: str, max_chunk_size: int = 2000) -> list[str]:
     if not text or not text.strip(): return []
@@ -144,7 +168,7 @@ def setup_main_ui(page: ft.Page):
     is_previewing = False
     prefs = ft.SharedPreferences()
     
-    # App ထဲမှာ အသံဖွင့်ဖို့ Player တစ်ခုတည်း ဖန်တီးမယ်
+    # App တစ်ခုလုံးအတွက် Player တစ်ခုတည်း
     global_audio = fta.Audio(autoplay=False)
     page.services.append(global_audio)
 
@@ -434,25 +458,19 @@ def setup_main_ui(page: ft.Page):
         
         async def run_preview():
             try:
-                cache_dir = os.path.join(os.getcwd(), "temp_tts")
-                os.makedirs(cache_dir, exist_ok=True)
-                
                 timestamp = datetime.now().strftime("%H%M%S")
-                preview_path = os.path.join(cache_dir, f"preview_{timestamp}.mp3")
+                preview_filename = f"preview_{timestamp}.mp3"
+                preview_path = os.path.join(CACHE_DIR, preview_filename)
                 
                 preview_text = "မင်္ဂလာပါ၊ ကျွန်တော်တို့ Platinum Voice မှ ကြိုဆိုပါတယ်။ ဒါက အသံစမ်းသပ်နေတာ ဖြစ်ပါတယ်။"
                 
                 communicate = edge_tts.Communicate(preview_text, selected_voice, rate=rate_str, pitch=pitch_str)
                 await communicate.save(preview_path)
                 
-                # Base64 အဖြစ် ပြောင်းလဲခြင်း (File Permission ကျော်လွှားရန်)
-                with open(preview_path, "rb") as f:
-                    audio_bytes = f.read()
-                b64_str = base64.b64encode(audio_bytes).decode('utf-8')
-                data_uri = f"data:audio/mp3;base64,{b64_str}"
+                # HTTP Server ကနေ ဖွင့်မယ်
+                http_url = f"http://127.0.0.1:{PORT}/{preview_filename}"
                 
-                # Player ကို Update လုပ်ပြီး ဖွင့်မယ်
-                global_audio.src = data_uri
+                global_audio.src = http_url
                 global_audio.update()
                 global_audio.play()
                 page.update()
@@ -653,9 +671,6 @@ def setup_main_ui(page: ft.Page):
             total_chunks = len(chunks)
             if total_chunks == 0: raise ValueError("စာသားမရှိပါ။")
 
-            cache_dir = os.path.join(os.getcwd(), "temp_tts")
-            os.makedirs(cache_dir, exist_ok=True)
-            
             selected_voice = voice_dropdown.value
             rate_str = f"{int(rate_slider.value):+d}%"
             pitch_str = f"{int(pitch_slider.value):+d}Hz"
@@ -665,7 +680,7 @@ def setup_main_ui(page: ft.Page):
                 status_text.value = f"အပိုင်း {i+1}/{total_chunks} ကို ထုတ်လုပ်နေသည်... ({int((i/total_chunks)*100)}%)"
                 page.update()
                 
-                chunk_file = os.path.join(cache_dir, f"chunk_{i}.mp3")
+                chunk_file = os.path.join(CACHE_DIR, f"chunk_{i}.mp3")
                 communicate = edge_tts.Communicate(
                     chunk, 
                     selected_voice, 
@@ -683,7 +698,7 @@ def setup_main_ui(page: ft.Page):
             
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             final_filename = f"Platinum_TTS_{timestamp}.mp3"
-            final_path = os.path.join(cache_dir, final_filename)
+            final_path = os.path.join(CACHE_DIR, final_filename)
             
             if merge_audio_files(chunk_files, final_path):
                 status_text.value = "အသံထုတ်လုပ်မှု ပြီးစီးပါပြီ!"
@@ -715,13 +730,8 @@ def setup_main_ui(page: ft.Page):
 
         def play_audio(e):
             try:
-                # ဖိုင်ကို Base64 အဖြစ် ပြောင်းပြီး ဖွင့်မယ်
-                with open(file_path, "rb") as f:
-                    audio_bytes = f.read()
-                b64_str = base64.b64encode(audio_bytes).decode('utf-8')
-                data_uri = f"data:audio/mp3;base64,{b64_str}"
-                
-                global_audio.src = data_uri
+                http_url = f"http://127.0.0.1:{PORT}/{filename}"
+                global_audio.src = http_url
                 global_audio.update()
                 global_audio.play()
                 page.update()
