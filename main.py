@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 
 # ==========================================
-# PLATINUM VOICE - FIXED UI & AUDIO
+# PLATINUM VOICE - FIXED STORAGE & UI
 # ==========================================
 
 GRADIENT_COLORS = ["#1A0B2E", "#2D1B4E", "#0F2027", "#203A43"] 
@@ -169,11 +169,16 @@ def setup_main_ui(page: ft.Page):
                 pass
         future.add_done_callback(on_done)
 
+    # ဒီနေရာမှာ Error တက်တာပါ။ async function ကို သေချာအောင် ပြင်ထားပါတယ်။
     def save_presets_to_storage(presets_dict):
-        page.run_task(lambda: prefs.set("my_presets", json.dumps(presets_dict)))
+        async def _save():
+            await prefs.set("my_presets", json.dumps(presets_dict))
+        page.run_task(_save)
 
     def save_pronuns_to_storage(pronun_dict):
-        page.run_task(lambda: prefs.set("my_pronunciations", json.dumps(pronun_dict)))
+        async def _save():
+            await prefs.set("my_pronunciations", json.dumps(pronun_dict))
+        page.run_task(_save)
 
     def glass_card(content, padding=20):
         return ft.Container(
@@ -350,12 +355,11 @@ def setup_main_ui(page: ft.Page):
         )
     )
 
-    # Dropdown အရောင် ပြင်ဆင်ထားပါတယ်
     voice_dropdown = ft.Dropdown(
         options=[ft.dropdown.Option(key=v, text=k) for k, v in VOICE_PROFILES.items()],
         value="my-MM-NilarNeural",
-        bgcolor="#1A1D24",          # Menu အတွက် အစစ်အမှန် အနက်ရောင် (ဖောက်ထွင်းမမြင်ရ)
-        fill_color=GLASS_INPUT_BG,  # ရွေးချယ်တဲ့အကွက်အတွက် ဖောက်ထွင်းမြင်ရတဲ့အရောင်
+        bgcolor="#1A1D24",
+        fill_color=GLASS_INPUT_BG,
         border_color=GLASS_BORDER,
         color=COLOR_TEXT,
         text_size=14,
