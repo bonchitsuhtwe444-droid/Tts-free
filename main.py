@@ -1,5 +1,4 @@
 import flet as ft
-import flet_audio as fta
 import edge_tts
 import asyncio
 import re
@@ -7,13 +6,11 @@ import os
 import shutil
 import json
 import time
-import threading
-import http.server
-import socketserver
+import base64
 from datetime import datetime
 
 # ==========================================
-# PLATINUM VOICE - LOCAL HTTP SERVER AUDIO
+# PLATINUM VOICE - WEBVIEW AUDIO PLAYER
 # ==========================================
 
 GRADIENT_COLORS = ["#1A0B2E", "#2D1B4E", "#0F2027", "#203A43"] 
@@ -46,28 +43,6 @@ VOICE_PROFILES = {
     "🇩🇪 ကာတရင် (ဂျာမန် - မိန်းကလေး)": "de-DE-KatjaNeural",
     "🇪🇸 အယ်လ်ဗာ (စပိန် - မိန်းကလေး)": "es-ES-ElviraNeural",
 }
-
-# ==========================================
-# Local HTTP Server Setup
-# ==========================================
-CACHE_DIR = os.path.join(os.getcwd(), "temp_tts")
-os.makedirs(CACHE_DIR, exist_ok=True)
-PORT = 8765
-
-class QuietHandler(http.server.SimpleHTTPRequestHandler):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, directory=CACHE_DIR, **kwargs)
-    def log_message(self, format, *args):
-        pass # Log တွေ မထွက်အောင် ပိတ်ထားမယ်
-
-def start_server():
-    with socketserver.TCPServer(("127.0.0.1", PORT), QuietHandler) as httpd:
-        httpd.serve_forever()
-
-# App စဖွင့်တာနဲ့ Server ကို နောက်ကွယ်ကနေ စတင်မယ်
-threading.Thread(target=start_server, daemon=True).start()
-
-# ==========================================
 
 def split_unlimited_text(text: str, max_chunk_size: int = 2000) -> list[str]:
     if not text or not text.strip(): return []
@@ -167,10 +142,6 @@ def setup_main_ui(page: ft.Page):
     is_generating = False
     is_previewing = False
     prefs = ft.SharedPreferences()
-    
-    # App တစ်ခုလုံးအတွက် Player တစ်ခုတည်း
-    global_audio = fta.Audio(autoplay=False)
-    page.services.append(global_audio)
 
     async def load_data_async():
         try:
@@ -445,6 +416,32 @@ def setup_main_ui(page: ft.Page):
         active_color=COLOR_GOLD, inactive_color="#44FFFFFF",
     )
 
+    # WebView ကို သိမ်းထားမယ့် Variable
+    audio_webview = ft.WebView(expand=True)
+    player_visible = False
+
+    def play_audio_html(b64_str):
+        # HTML5 Audio Player ကို တည်ဆောက်မယ်
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ background-color: #1A1D24; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }}
+                audio {{ width: 90%; }}
+            </style>
+        </head>
+        <body>
+            <audio controls autoplay>
+                <source src="data:audio/mp3;base64,{b64_str}" type="audio/mp3">
+                သင့်ဖုန်းက အသံကို မဖွင့်နိုင်ပါဘူး။
+            </audio>
+        </body>
+        </html>
+        """
+        audio_webview.html = html_content
+        audio_webview.update()
+
     def preview_voice(e):
         nonlocal is_previewing
         if is_previewing: return
@@ -458,23 +455,22 @@ def setup_main_ui(page: ft.Page):
         
         async def run_preview():
             try:
+                cache_dir = os.path.join(os.getcwd(), "temp_tts")
+                os.makedirs(cache_dir, exist_ok=True)
+                
                 timestamp = datetime.now().strftime("%H%M%S")
-                preview_filename = f"preview_{timestamp}.mp3"
-                preview_path = os.path.join(CACHE_DIR, preview_filename)
+                preview_path = os.path.join(cache_dir, f"preview_{timestamp}.mp3")
                 
                 preview_text = "မင်္ဂလာပါ၊ ကျွန်တော်တို့ Platinum Voice မှ ကြိုဆိုပါတယ်။ ဒါက အသံစမ်းသပ်နေတာ ဖြစ်ပါတယ်။"
                 
                 communicate = edge_tts.Communicate(preview_text, selected_voice, rate=rate_str, pitch=pitch_str)
                 await communicate.save(preview_path)
                 
-                # HTTP Server ကနေ ဖွင့်မယ်
-                http_url = f"http://127.0.0.1:{PORT}/{preview_filename}"
+                # Base64 ပြောင်းပြီး HTML Player ဆီ ပို့မယ်
+                with open(preview_path, "rb") as f:
+                    b64_str = base64.b64encode(f.read()).decode('utf-8')
                 
-                global_audio.src = http_url
-                global_audio.update()
-                global_audio.play()
-                page.update()
-                
+                play_audio_html(b64_str)
                 status_text.value = "အသံဖွင့်နေသည်..."
             except Exception as ex:
                 status_text.value = f"Error: {str(ex)}"
@@ -627,6 +623,8 @@ def setup_main_ui(page: ft.Page):
 
     status_text = ft.Text("", size=14, color=COLOR_GOLD, text_align=ft.TextAlign.CENTER)
     progress_bar = ft.ProgressBar(width=350, color=COLOR_GOLD, bgcolor=GLASS_INPUT_BG, visible=False, border_radius=10)
+    
+    # Player Container (WebView ပါဝင်မယ်)
     player_container = ft.Column(visible=False, spacing=10)
     
     generate_btn = ft.Container(
@@ -671,6 +669,9 @@ def setup_main_ui(page: ft.Page):
             total_chunks = len(chunks)
             if total_chunks == 0: raise ValueError("စာသားမရှိပါ။")
 
+            cache_dir = os.path.join(os.getcwd(), "temp_tts")
+            os.makedirs(cache_dir, exist_ok=True)
+            
             selected_voice = voice_dropdown.value
             rate_str = f"{int(rate_slider.value):+d}%"
             pitch_str = f"{int(pitch_slider.value):+d}Hz"
@@ -680,7 +681,7 @@ def setup_main_ui(page: ft.Page):
                 status_text.value = f"အပိုင်း {i+1}/{total_chunks} ကို ထုတ်လုပ်နေသည်... ({int((i/total_chunks)*100)}%)"
                 page.update()
                 
-                chunk_file = os.path.join(CACHE_DIR, f"chunk_{i}.mp3")
+                chunk_file = os.path.join(cache_dir, f"chunk_{i}.mp3")
                 communicate = edge_tts.Communicate(
                     chunk, 
                     selected_voice, 
@@ -698,7 +699,7 @@ def setup_main_ui(page: ft.Page):
             
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             final_filename = f"Platinum_TTS_{timestamp}.mp3"
-            final_path = os.path.join(CACHE_DIR, final_filename)
+            final_path = os.path.join(cache_dir, final_filename)
             
             if merge_audio_files(chunk_files, final_path):
                 status_text.value = "အသံထုတ်လုပ်မှု ပြီးစီးပါပြီ!"
@@ -730,11 +731,10 @@ def setup_main_ui(page: ft.Page):
 
         def play_audio(e):
             try:
-                http_url = f"http://127.0.0.1:{PORT}/{filename}"
-                global_audio.src = http_url
-                global_audio.update()
-                global_audio.play()
-                page.update()
+                with open(file_path, "rb") as f:
+                    b64_str = base64.b64encode(f.read()).decode('utf-8')
+                
+                play_audio_html(b64_str)
                 status_text.value = "အသံဖွင့်နေသည်..."
                 page.update()
             except Exception as ex:
@@ -800,6 +800,13 @@ def setup_main_ui(page: ft.Page):
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     spacing=15,
                 )
+            ),
+            # WebView Player ကို ဒီနေရာမှာ ထည့်ထားပါတယ်
+            ft.Container(
+                content=audio_webview,
+                height=80, # Player အမြင့်
+                border_radius=10,
+                clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
             )
         ]
         player_container.visible = True
