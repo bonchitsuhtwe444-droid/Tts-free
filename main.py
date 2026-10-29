@@ -10,7 +10,7 @@ import time
 from datetime import datetime
 
 # ==========================================
-# PLATINUM VOICE - IN-APP AUDIO (FIXED)
+# PLATINUM VOICE - IMPORT & CLEANUP EDITION
 # ==========================================
 
 GRADIENT_COLORS = ["#1A0B2E", "#2D1B4E", "#0F2027", "#203A43"] 
@@ -332,6 +332,51 @@ def setup_main_ui(page: ft.Page):
         char_count_text.value = f"{count} characters"
         page.update()
 
+    # ==========================================
+    # 1. File Import စနစ်
+    # ==========================================
+    file_picker = ft.FilePicker()
+    page.services.append(file_picker)
+
+    def import_file(e):
+        file_picker.pick_files(
+            allow_multiple=False,
+            file_type=ft.FilePickerFileType.CUSTOM,
+            allowed_extensions=["txt"],
+        )
+
+    async def on_file_picked(e: ft.FilePickerResultEvent):
+        if e.files and len(e.files) > 0:
+            filepath = e.files[0].path
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    content = f.read()
+                text_input.value = content
+                update_char_count()
+                status_text.value = "ဖိုင်ကို ဖတ်ယူပြီးပါပြီ။"
+                page.update()
+            except Exception as ex:
+                status_text.value = f"ဖိုင်ဖတ်မရပါ: {str(ex)}"
+                page.update()
+                
+    file_picker.on_result = on_file_picked
+
+    # ==========================================
+    # 2. Text Cleanup စနစ်
+    # ==========================================
+    def clean_text(e):
+        text = text_input.value
+        if not text:
+            return
+        # မလိုအပ်တဲ့ Space တွေ၊ Enter တွေကို ရှင်းမယ်
+        text = re.sub(r' +', ' ', text) # Space အများကြီးကို တစ်ခုတည်းဖြစ်အောင်
+        text = re.sub(r'\n+', '\n', text) # Enter အများကြီးကို တစ်ခုတည်းဖြစ်အောင်
+        text = text.strip() # အစနဲ့ အဆုံးက အကွက်လွတ်တွေ ဖျက်မယ်
+        text_input.value = text
+        update_char_count()
+        status_text.value = "စာသားများကို သန့်ရှင်းရေးလုပ်ပြီးပါပြီ။"
+        page.update()
+
     editor_card = glass_card(
         ft.Column(
             [
@@ -339,13 +384,30 @@ def setup_main_ui(page: ft.Page):
                     [
                         ft.Icon(ft.Icons.EDIT_NOTE, color=COLOR_GOLD, size=22),
                         ft.Text("SCRIPT EDITOR", size=14, weight=ft.FontWeight.BOLD, color=COLOR_TEXT),
-                        ft.IconButton(
-                            icon=ft.Icons.DELETE_SWEEP, 
-                            icon_color=COLOR_ERROR,
-                            icon_size=22,
-                            tooltip="Clear All",
-                            on_click=clear_text,
-                        ),
+                        # Import နဲ့ Cleanup ခလုတ်တွေ ထည့်ထားပါတယ်
+                        ft.Row([
+                            ft.IconButton(
+                                icon=ft.Icons.FOLDER_OPEN, 
+                                icon_color=COLOR_GOLD,
+                                icon_size=22,
+                                tooltip="Import .txt File",
+                                on_click=import_file,
+                            ),
+                            ft.IconButton(
+                                icon=ft.Icons.CLEANING_SERVICES, 
+                                icon_color=COLOR_GOLD,
+                                icon_size=22,
+                                tooltip="Clean Text",
+                                on_click=clean_text,
+                            ),
+                            ft.IconButton(
+                                icon=ft.Icons.DELETE_SWEEP, 
+                                icon_color=COLOR_ERROR,
+                                icon_size=22,
+                                tooltip="Clear All",
+                                on_click=clear_text,
+                            ),
+                        ], spacing=0)
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 ),
@@ -394,7 +456,6 @@ def setup_main_ui(page: ft.Page):
                 cache_dir = os.path.join(os.getcwd(), "temp_tts")
                 os.makedirs(cache_dir, exist_ok=True)
                 
-                # ဖိုင်နာမည်ကို အသစ်တစ်ခုတည်း ပေးတာမို့ Cache မခံပါဘူး
                 timestamp = datetime.now().strftime("%H%M%S")
                 preview_path = os.path.join(cache_dir, f"preview_{timestamp}.mp3")
                 
@@ -403,11 +464,9 @@ def setup_main_ui(page: ft.Page):
                 communicate = edge_tts.Communicate(preview_text, selected_voice, rate=rate_str, pitch=pitch_str)
                 await communicate.save(preview_path)
                 
-                # အရေးကြီးဆုံး - အရင် Player တွေအားလုံးကို ရှင်းထုတ်မယ်
                 page.services.clear()
                 page.update()
                 
-                # Player အသစ်ဖွင့်မယ်
                 player = fta.Audio(src=preview_path, autoplay=True)
                 page.services.append(player)
                 page.update()
@@ -670,11 +729,9 @@ def setup_main_ui(page: ft.Page):
 
         def play_audio(e):
             try:
-                # အရေးကြီးဆုံး - အရင် Player တွေအားလုံးကို ရှင်းထုတ်မယ်
                 page.services.clear()
                 page.update()
                 
-                # Player အသစ်ဖွင့်မယ်
                 player = fta.Audio(src=file_path, autoplay=True)
                 page.services.append(player)
                 page.update()
